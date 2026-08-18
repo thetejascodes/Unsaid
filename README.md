@@ -65,7 +65,7 @@ User selects mood + interests
         ▼
    Room Created → both users notified (MATCHED)
         │
-        ├──► Messages flow via WebSocket → persisted (encrypted at rest)
+        ├──► Messages flow via WebSocket → persisted (Postgres, encrypted at rest)
         │
         ├──► AI moderation on every message (Claude API)
         │        │
@@ -84,16 +84,19 @@ User selects mood + interests
 
 | Layer | Tech |
 |---|---|
-| Mobile App | React Native (Expo) |
+| Mobile App | React Native (Expo, SDK 57) |
 | Backend | Node.js + Express + TypeScript |
 | Real-time | WebSockets (ws) |
 | Auth | Phone OTP (Twilio/MSG91) + JWT (access + refresh) |
-| Matching & State | Redis |
-| Persistence | PostgreSQL (users, messages, reports, bans) |
+| Matching & State | Redis 7 |
+| Persistence | PostgreSQL 17 |
+| ORM | Drizzle ORM + Drizzle Kit |
 | Event Logging | Structured logs → (Kafka only if/when scale needs it) |
 | AI | Claude API — icebreaker + moderation |
 | Images | Cloudinary |
+| Containerization | Docker + Docker Compose |
 | Monorepo | npm workspaces |
+| Docs Site | Docusaurus |
 
 ---
 
@@ -102,23 +105,37 @@ User selects mood + interests
 ```
 unsaid/
 ├── apps/
-│   ├── server/                  # Node.js backend
-│   │   └── src/
-│   │       ├── modules/         # Feature modules
-│   │       │   ├── auth/        # OTP, JWT issuance/refresh, session revocation
-│   │       │   ├── users/       # Profiles, username, avatar, bio
-│   │       │   ├── matching/    # Queue + matching algorithm
-│   │       │   ├── chat/        # WebSocket gateway + messaging + history
-│   │       │   ├── moderation/  # AI moderation, reports, blocks, bans
-│   │       │   ├── ai/          # Icebreaker
-│   │       │   └── upload/      # Image uploads
-│   │       ├── shared/          # Redis, Postgres, config
-│   │       └── index.ts
+│   ├── server/                    # Node.js backend
+│   │   ├── src/
+│   │   │   ├── modules/           # Feature modules — each owns its own schema
+│   │   │   │   ├── auth/          # OTP, JWT, session revocation, users table
+│   │   │   │   ├── users/         # Profile read/update
+│   │   │   │   ├── matching/      # Queue + matching algorithm
+│   │   │   │   ├── chat/          # WebSocket gateway + messaging + history
+│   │   │   │   ├── moderation/    # AI moderation, reports, blocks, bans
+│   │   │   │   ├── ai/            # Icebreaker
+│   │   │   │   └── upload/        # Image uploads
+│   │   │   ├── common/
+│   │   │   │   ├── db/            # Drizzle client + merged schema
+│   │   │   │   ├── config/        # Env loading + validation
+│   │   │   │   └── middlewares/   # Error handler, auth middleware
+│   │   │   └── index.ts
+│   │   ├── drizzle/                # Generated SQL migrations
+│   │   ├── drizzle.config.ts
+│   │   ├── Dockerfile
+│   │   └── .env.example
 │   │
-│   └── mobile/                  # React Native (Expo) — coming soon
+│   ├── mobile/                    # React Native (Expo)
+│   └── docs/                      # Docusaurus documentation site
 │
-└── packages/
-    └── shared/                  # Shared TypeScript types
+├── packages/
+│   └── shared/                    # Shared TypeScript types
+│
+├── docs/                          # Raw docs content (ADRs, specs) — rendered by apps/docs
+│   └── adr/
+│       └── 001-database-selection.md
+│
+└── docker-compose.yml             # Postgres + Redis + server, for local dev
 ```
 
 ---
@@ -141,34 +158,43 @@ npm install
 ### 2. Start infrastructure
 
 ```bash
-docker-compose up -d
-# starts Redis + Postgres
+docker compose up -d
+# starts Postgres 17 + Redis 7
 ```
 
 ### 3. Configure env
 
 ```bash
 cp apps/server/.env.example apps/server/.env
-# fill in ANTHROPIC_API_KEY, TWILIO_* (or MSG91_*), JWT_SECRET, DATABASE_URL
+# fill in DATABASE_URL, REDIS_URL, JWT secrets, ANTHROPIC_API_KEY, TWILIO_*
 ```
 
-### 4. Run
+### 4. Run migrations
+
+```bash
+cd apps/server
+npx drizzle-kit generate
+npx drizzle-kit migrate
+```
+
+### 5. Run the server
 
 ```bash
 npm run dev
 # Server: http://localhost:4000
 ```
 
-### 5. Test auth + WebSocket
+### 6. Run the mobile app
 
 ```bash
-# Request OTP
-curl -X POST localhost:4000/auth/otp/request -d '{"phone":"+91XXXXXXXXXX"}'
+cd apps/mobile
+npx expo start
+# scan the QR with Expo Go, or press 'a' for Android emulator / 'w' for web
+```
 
-# Verify OTP → returns access + refresh token
-curl -X POST localhost:4000/auth/otp/verify -d '{"phone":"+91XXXXXXXXXX","code":"123456"}'
+### 7. Test WebSocket
 
-# Connect authenticated WebSocket
+```bash
 npx wscat -c "ws://localhost:4000/ws?token=<access_token>"
 
 # Join queue
@@ -241,14 +267,41 @@ Access tokens are short-lived (~15 min). Refresh tokens are rotated and stored s
 
 ---
 
+## 🗄️ Database
+
+- **PostgreSQL 17**, single primary datastore for all relational and message data. See [ADR-001](./docs/adr/001-database-selection.md) for the full SQL vs NoSQL reasoning.
+- **Drizzle ORM**, schema defined module-wise — each module owns the tables it's responsible for (e.g. `modules/auth/schema.ts` defines `users`), re-exported through `common/db/schema.ts` for Drizzle Kit to discover.
+- **Redis 7** — ephemeral state only: matching queue, active ban denylist. Not a system of record.
+- Migrations are generated via `drizzle-kit generate` and applied via `drizzle-kit migrate`; SQL output lives in `apps/server/drizzle/`.
+
+---
+
 ## 🛡️ Safety & Data
 
-- Messages are **persisted** (this is new — history is a core feature now) and **encrypted at rest**.
-- Phone numbers are stored hashed/encrypted, never in plaintext beyond the OTP send step.
+- Messages are **persisted** and **encrypted at rest**.
+- Phone numbers are stored hashed, never in plaintext beyond the OTP send step.
 - Every message is AI-moderated; content indicating self-harm or crisis surfaces a resource prompt to the sender, not just a content block.
 - Reports and blocks are tied to verified accounts and persist across reinstalls.
 - Bans are enforced at the WebSocket layer via a Redis denylist checked on every message, so an active session is cut immediately, not just future logins.
 - Data retention and account/message deletion policy: **TBD — required before public launch**, not a v2 item.
+
+---
+
+## 📓 Architecture Decisions
+
+Significant technical decisions are recorded as ADRs in [`docs/adr/`](./docs/adr), rendered on the docs site (`apps/docs`):
+
+- [ADR-001: Database Selection — SQL vs NoSQL](./docs/adr/001-database-selection.md)
+
+---
+
+## 🐳 Docker
+
+```bash
+docker compose up -d --build
+```
+
+Spins up Postgres 17, Redis 7, and the server together. See `docker-compose.yml` (root) and `apps/server/Dockerfile`.
 
 ---
 
@@ -260,6 +313,8 @@ Access tokens are short-lived (~15 min). Refresh tokens are rotated and stored s
 - [x] Redis matching queue + scoring
 - [x] WebSocket server + event handling
 - [x] AI icebreaker + moderation
+- [x] Database + ORM decided (Postgres 17 + Drizzle)
+- [x] Docker Compose local infra
 - [ ] Phone OTP auth (request/verify, JWT issuance)
 - [ ] Profiles (username, avatar, bio)
 - [ ] Message persistence (Postgres, encrypted)
@@ -268,7 +323,7 @@ Access tokens are short-lived (~15 min). Refresh tokens are rotated and stored s
 - [ ] Data retention / deletion policy
 
 ### V2 — Mobile
-- [ ] React Native (Expo) app
+- [x] Expo project scaffolded
 - [ ] OTP login flow
 - [ ] Mood + interest selector
 - [ ] Chat UI + saved history
