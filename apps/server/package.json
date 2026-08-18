@@ -4,7 +4,11 @@
   "description": "> *The wound that ages, aches deeper.*\r > *The fruit that ripens, tastes sweeter.*\r > *The pickle that marinates, hits different.*\r >\r > *Some things need time to become what they were always meant to be.*\r > *This app is for everything you let marinate too long — alone.*",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "db:migrate": "drizzle-kit migrate",
+    "db:generate": "drizzle-kit generate",
+    "db:studio": "drizzle-kit studio",
+    "dev": "tsc-watch --onSuccess \"node dist/server.js\""
   },
   "repository": {
     "type": "git",
@@ -13,17 +17,21 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "bugs": {
     "url": "https://github.com/thetejascodes/Unsaid/issues"
   },
   "homepage": "https://github.com/thetejascodes/Unsaid#readme",
   "dependencies": {
     "bcryptjs": "^3.0.3",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "mongoose": "^9.9.1"
   },
   "devDependencies": {
-    "tsc-watch": "^7.2.1"
+    "@types/express": "^5.0.6",
+    "@types/node": "^26.2.0",
+    "tsc-watch": "^7.2.1",
+    "typescript": "^7.0.2"
   }
 }
