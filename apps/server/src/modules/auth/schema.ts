@@ -20,3 +20,15 @@ export const otpCodes = pgTable("otp_codes", {
   consumed: boolean().notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+
+export const sessions = pgTable("sessions", {
+  id: uuid().primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  refreshTokenHash: varchar("refresh_token_hash", { length: 255 }).notNull().unique(),
+  deviceInfo: text("device_info"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  expiresAt: timestamp("expires_at").notNull(),
+  revokedAt: timestamp("revoked_at"), // set immediately on ban/logout
+});
