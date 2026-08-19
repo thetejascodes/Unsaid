@@ -1,4 +1,4 @@
-import { pgTable, uuid, varchar, text, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, uuid, varchar, text, timestamp,boolean } from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid().primaryKey().defaultRandom(),
@@ -9,4 +9,14 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   bannedAt: timestamp("banned_at"),
   banReason: text("ban_reason"),
+});
+
+export const otpCodes = pgTable("otp_codes", {
+  id: uuid().primaryKey().defaultRandom(),
+  // No FK to users — a user doesn't exist yet at OTP-request time
+  phoneHash: varchar("phone_hash", { length: 255 }).notNull(),
+  codeHash: varchar("code_hash", { length: 255 }).notNull(),
+  expiresAt: timestamp("expires_at").notNull(),
+  consumed: boolean().notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
 });
