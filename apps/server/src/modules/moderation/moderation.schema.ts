@@ -29,3 +29,22 @@ export const reports = pgTable("reports", {
 
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
+export const blocks = pgTable(
+  "blocks",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+
+    blockerId: uuid("blocker_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    blockedUserId: uuid("blocked_user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (table) => [
+    // A user can only block the same person once
+    unique().on(table.blockerId, table.blockedUserId),
+  ],
+);
