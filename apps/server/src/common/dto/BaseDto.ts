@@ -24,4 +24,4 @@ class BaseDto<T> {
   }
 }
 
-export default BaseDto
+export default BaseDto;
