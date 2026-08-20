@@ -1,4 +1,11 @@
-import { pgTable, uuid, varchar, text, timestamp,boolean } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  uuid,
+  varchar,
+  text,
+  timestamp,
+  boolean,
+} from "drizzle-orm/pg-core";
 
 export const users = pgTable("users", {
   id: uuid().primaryKey().defaultRandom(),
@@ -26,7 +33,9 @@ export const sessions = pgTable("sessions", {
   userId: uuid("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  refreshTokenHash: varchar("refresh_token_hash", { length: 255 }).notNull().unique(),
+  refreshTokenHash: varchar("refresh_token_hash", { length: 255 })
+    .notNull()
+    .unique(),
   deviceInfo: text("device_info"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   expiresAt: timestamp("expires_at").notNull(),
