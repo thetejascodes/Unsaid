@@ -27,7 +27,9 @@ export const messages = pgTable("messages", {
     .references(() => users.id, { onDelete: "cascade" }),
 
   content: text().notNull(), // encrypted at the application layer before insert
-  messageType: varchar("message_type", { length: 16 }).notNull().default("text"),
+  messageType: varchar("message_type", { length: 16 })
+    .notNull()
+    .default("text"),
   imageUrl: text("image_url"),
 
   sentAt: timestamp("sent_at").notNull().defaultNow(),
