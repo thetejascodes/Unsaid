@@ -133,7 +133,7 @@ unsaid/
 │
 ├── docs/                          # Raw docs content (ADRs, specs) — rendered by apps/docs
 │   └── adr/
-│       └── 001-database-selection.md
+│       └── 0001-database-selection.md
 │
 └── docker-compose.yml             # Postgres + Redis + server, for local dev
 ```
@@ -269,7 +269,7 @@ Access tokens are short-lived (~15 min). Refresh tokens are rotated and stored s
 
 ## 🗄️ Database
 
-- **PostgreSQL 17**, single primary datastore for all relational and message data. See [ADR-001](./docs/adr/001-database-selection.md) for the full SQL vs NoSQL reasoning.
+- **PostgreSQL 17**, single primary datastore for all relational and message data. See [ADR-0001](./docs/adr/0001-database-selection.md) for the full SQL vs NoSQL reasoning.
 - **Drizzle ORM**, schema defined module-wise — each module owns the tables it's responsible for (e.g. `modules/auth/schema.ts` defines `users`), re-exported through `common/db/schema.ts` for Drizzle Kit to discover.
 - **Redis 7** — ephemeral state only: matching queue, active ban denylist. Not a system of record.
 - Migrations are generated via `drizzle-kit generate` and applied via `drizzle-kit migrate`; SQL output lives in `apps/server/drizzle/`.
@@ -291,7 +291,7 @@ Access tokens are short-lived (~15 min). Refresh tokens are rotated and stored s
 
 Significant technical decisions are recorded as ADRs in [`docs/adr/`](./docs/adr), rendered on the docs site (`apps/docs`):
 
-- [ADR-001: Database Selection — SQL vs NoSQL](./docs/adr/001-database-selection.md)
+- [ADR-0001: Database Selection — SQL vs NoSQL](./docs/adr/0001-database-selection.md)
 
 ---
 
