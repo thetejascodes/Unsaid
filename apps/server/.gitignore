@@ -2,7 +2,12 @@
 .env
 .env.local
 .env.*.local
-
+apps/server/.env
+apps/mobile/.env
+apps/mobile/.expo/
+*.jks
+*.mobileprovision
+docs/backend-build-plan.md
 # Dependencies
 node_modules/
 npm-debug.log*
