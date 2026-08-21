@@ -1,6 +1,5 @@
-
-function optional(key:string,fallback:string){
-    return process.env[key] ?? fallback;
+function optional(key: string, fallback: string) {
+  return process.env[key] ?? fallback;
 }
 
 function required(key: string) {
@@ -18,15 +17,15 @@ export const config = {
     accessExpiresIn: optional("JWT_ACCESS_EXPIRES_IN", "15m"),
     refreshExpiresIn: optional("JWT_REFRESH_EXPIRES_IN", "7d"),
   },
-  database:{
-    url: required("DATABASE_URL")
+  database: {
+    url: required("DATABASE_URL"),
   },
-  port:Number(optional("PORT","8000")),
-  twilio:{
+  port: Number(optional("PORT", "8000")),
+  twilio: {
     accountSid: optional("TWILIO_ACCOUNT_SID", ""),
     apiKeySid: optional("TWILIO_API_KEY_SID", ""),
     apiKeySecret: optional("TWILIO_API_KEY_SECRET", ""),
     fromNumber: optional("TWILIO_FROM_NUMBER", ""),
     toNumber: optional("TWILIO_TO_NUMBER", ""),
-  }
+  },
 };
