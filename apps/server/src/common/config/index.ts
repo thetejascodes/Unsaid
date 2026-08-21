@@ -22,4 +22,11 @@ export const config = {
     url: required("DATABASE_URL")
   },
   port:Number(optional("PORT","8000")),
+  twilio:{
+    accountSid: optional("TWILIO_ACCOUNT_SID", ""),
+    apiKeySid: optional("TWILIO_API_KEY_SID", ""),
+    apiKeySecret: optional("TWILIO_API_KEY_SECRET", ""),
+    fromNumber: optional("TWILIO_FROM_NUMBER", ""),
+    toNumber: optional("TWILIO_TO_NUMBER", ""),
+  }
 };
