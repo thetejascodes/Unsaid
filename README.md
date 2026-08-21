@@ -87,7 +87,8 @@ User selects mood + interests
 | Mobile App | React Native (Expo, SDK 57) |
 | Backend | Node.js + Express + TypeScript |
 | Real-time | WebSockets (ws) |
-| Auth | Phone OTP (Twilio/MSG91) + JWT (access + refresh) |
+| Auth | Phone OTP (Twilio, Restricted API Key) + JWT (access + refresh) |
+| Validation | Zod, via a shared `BaseDto` + `validate` middleware |
 | Matching & State | Redis 7 |
 | Persistence | PostgreSQL 17 |
 | ORM | Drizzle ORM + Drizzle Kit |
@@ -109,16 +110,24 @@ unsaid/
 │   │   ├── src/
 │   │   │   ├── modules/           # Feature modules — each owns its own schema
 │   │   │   │   ├── auth/          # OTP, JWT, session revocation, users table
-│   │   │   │   ├── users/         # Profile read/update
-│   │   │   │   ├── matching/      # Queue + matching algorithm
+│   │   │   │   │   ├── schema.ts       # users, otpCodes, sessions
+│   │   │   │   │   ├── dto.ts           # requestOtpDto, verifyOtpDto (Zod)
+│   │   │   │   │   ├── otp.ts           # Twilio client + sendOtpSms (stubbed)
+│   │   │   │   │   ├── service.ts       # business logic — in progress
+│   │   │   │   │   ├── controller.ts    # route handlers — pending
+│   │   │   │   │   └── routes.ts        # pending
+│   │   │   │   ├── users/         # Profile read/update — pending
+│   │   │   │   ├── matching/      # Queue + matching algorithm — pending
 │   │   │   │   ├── chat/          # WebSocket gateway + messaging + history
 │   │   │   │   ├── moderation/    # AI moderation, reports, blocks, bans
-│   │   │   │   ├── ai/            # Icebreaker
-│   │   │   │   └── upload/        # Image uploads
+│   │   │   │   ├── ai/            # Icebreaker — pending
+│   │   │   │   └── upload/        # Image uploads — pending
 │   │   │   ├── common/
 │   │   │   │   ├── db/            # Drizzle client + merged schema
-│   │   │   │   ├── config/        # Env loading + validation
-│   │   │   │   └── middlewares/   # Error handler, auth middleware
+│   │   │   │   ├── config/        # Env loading + validation (fail-fast)
+│   │   │   │   ├── dto/           # BaseDto — Zod schema wrapper
+│   │   │   │   ├── utils/         # jwt.utils, api-error, api-response
+│   │   │   │   └── middlewares/   # error-handler, validate, auth (pending)
 │   │   │   └── index.ts
 │   │   ├── drizzle/                # Generated SQL migrations
 │   │   ├── drizzle.config.ts
@@ -131,9 +140,11 @@ unsaid/
 ├── packages/
 │   └── shared/                    # Shared TypeScript types
 │
-├── docs/                          # Raw docs content (ADRs, specs) — rendered by apps/docs
+├── docs/                          # Raw docs content (ADRs, build plan) — rendered by apps/docs
+│   ├── backend-build-plan.md      # (gitignored — private working notes)
 │   └── adr/
-│       └── 0001-database-selection.md
+│       ├── 0001-database-selection.md
+│       └── 0002-authentication-strategy.md
 │
 └── docker-compose.yml             # Postgres + Redis + server, for local dev
 ```
@@ -166,8 +177,11 @@ docker compose up -d
 
 ```bash
 cp apps/server/.env.example apps/server/.env
-# fill in DATABASE_URL, REDIS_URL, JWT secrets, ANTHROPIC_API_KEY, TWILIO_*
+# fill in DATABASE_URL, REDIS_URL, JWT secrets, ANTHROPIC_API_KEY,
+# TWILIO_ACCOUNT_SID, TWILIO_API_KEY_SID, TWILIO_API_KEY_SECRET, TWILIO_FROM_NUMBER
 ```
+
+Twilio vars are currently optional at boot — OTP sending is stubbed to `console.log` during development, real SMS isn't wired in yet. See [ADR-0002](./docs/adr/0002-authentication-strategy.md).
 
 ### 4. Run migrations
 
@@ -208,15 +222,15 @@ npx wscat -c "ws://localhost:4000/ws?token=<access_token>"
 
 ## 🔐 Auth Endpoints
 
-| Endpoint | Method | Payload | Description |
-|---|---|---|---|
-| `/auth/otp/request` | POST | `phone` | Sends OTP, rate-limited per phone + IP |
-| `/auth/otp/verify` | POST | `phone, code` | Verifies OTP, returns access + refresh JWT |
-| `/auth/refresh` | POST | `refreshToken` | Rotates and returns new access token |
-| `/auth/logout` | POST | `refreshToken` | Revokes refresh token |
-| `/users/me` | GET/PATCH | — | View/update profile (username, avatar, bio) |
+| Endpoint | Method | Payload | Description | Status |
+|---|---|---|---|---|
+| `/auth/otp/request` | POST | `phone` | Sends OTP, rate-limited per phone | 🔧 building |
+| `/auth/otp/verify` | POST | `phone, code` | Verifies OTP, returns access + refresh JWT | 🔧 building |
+| `/auth/refresh` | POST | `refreshToken` | Rotates and returns new access token | 🔧 building |
+| `/auth/logout` | POST | `refreshToken` | Revokes refresh token | 🔧 building |
+| `/users/me` | GET/PATCH | — | View/update profile | ⏳ pending |
 
-Access tokens are short-lived (~15 min). Refresh tokens are rotated and stored server-side so they can be revoked immediately on ban. WebSocket connections must present a valid access token at handshake — unauthenticated sockets are rejected.
+Access tokens are short-lived (~15 min). Refresh tokens are rotated and stored server-side (`sessions` table, `revokedAt` column) so they can be revoked immediately on ban — not just on next login. WebSocket connections must present a valid access token at handshake. See [ADR-0002](./docs/adr/0002-authentication-strategy.md) for the full reasoning.
 
 ---
 
@@ -270,9 +284,20 @@ Access tokens are short-lived (~15 min). Refresh tokens are rotated and stored s
 ## 🗄️ Database
 
 - **PostgreSQL 17**, single primary datastore for all relational and message data. See [ADR-0001](./docs/adr/0001-database-selection.md) for the full SQL vs NoSQL reasoning.
-- **Drizzle ORM**, schema defined module-wise — each module owns the tables it's responsible for (e.g. `modules/auth/schema.ts` defines `users`), re-exported through `common/db/schema.ts` for Drizzle Kit to discover.
+- **Drizzle ORM**, schema defined module-wise — each module owns the tables it's responsible for (e.g. `modules/auth/schema.ts` defines `users`, `otpCodes`, `sessions`), re-exported through `common/db/schema.ts` for Drizzle Kit to discover.
 - **Redis 7** — ephemeral state only: matching queue, active ban denylist. Not a system of record.
 - Migrations are generated via `drizzle-kit generate` and applied via `drizzle-kit migrate`; SQL output lives in `apps/server/drizzle/`.
+
+---
+
+## 🧱 Request Validation
+
+Every route body is validated before it reaches business logic, using a shared `BaseDto` (`common/dto/BaseDto.ts`) wrapping a Zod schema, plus a `validate(dto)` middleware factory (`common/middlewares/validate.middleware.ts`) that rejects bad input with a clean `400` before the controller ever runs.
+
+```ts
+const requestOtpDto = new BaseDto(z.object({ phone: z.string().min(10).max(15) }))
+router.post('/otp/request', validate(requestOtpDto), requestOtpController)
+```
 
 ---
 
@@ -280,9 +305,11 @@ Access tokens are short-lived (~15 min). Refresh tokens are rotated and stored s
 
 - Messages are **persisted** and **encrypted at rest**.
 - Phone numbers are stored hashed, never in plaintext beyond the OTP send step.
+- OTP codes and refresh tokens are hashed before being stored — never kept in plaintext.
 - Every message is AI-moderated; content indicating self-harm or crisis surfaces a resource prompt to the sender, not just a content block.
 - Reports and blocks are tied to verified accounts and persist across reinstalls.
 - Bans are enforced at the WebSocket layer via a Redis denylist checked on every message, so an active session is cut immediately, not just future logins.
+- Twilio credentials use a Restricted API Key scoped to SMS-sending only, not the full account Auth Token — limits blast radius if the credential ever leaks. See [ADR-0002](./docs/adr/0002-authentication-strategy.md).
 - Data retention and account/message deletion policy: **TBD — required before public launch**, not a v2 item.
 
 ---
@@ -292,6 +319,7 @@ Access tokens are short-lived (~15 min). Refresh tokens are rotated and stored s
 Significant technical decisions are recorded as ADRs in [`docs/adr/`](./docs/adr), rendered on the docs site (`apps/docs`):
 
 - [ADR-0001: Database Selection — SQL vs NoSQL](./docs/adr/0001-database-selection.md)
+- [ADR-0002: Authentication Strategy — Phone OTP, Sessions, Twilio](./docs/adr/0002-authentication-strategy.md)
 
 ---
 
@@ -314,8 +342,15 @@ Spins up Postgres 17, Redis 7, and the server together. See `docker-compose.yml`
 - [x] WebSocket server + event handling
 - [x] AI icebreaker + moderation
 - [x] Database + ORM decided (Postgres 17 + Drizzle)
+- [x] All schemas written (`auth`, `chat`, `moderation` — 7 tables)
 - [x] Docker Compose local infra
-- [ ] Phone OTP auth (request/verify, JWT issuance)
+- [x] Config layer — fail-fast env validation
+- [x] JWT utilities (access/refresh sign + verify)
+- [x] Request validation layer (`BaseDto` + Zod + validate middleware)
+- [x] Twilio account + Restricted API Key set up (SMS sending stubbed)
+- [ ] `auth` service — OTP request/verify, session issuance/rotation
+- [ ] `auth` routes + controllers wired up
+- [ ] Auth middleware for protected routes
 - [ ] Profiles (username, avatar, bio)
 - [ ] Message persistence (Postgres, encrypted)
 - [ ] Reporting + blocking
@@ -333,6 +368,7 @@ Spins up Postgres 17, Redis 7, and the server together. See `docker-compose.yml`
 - [ ] Better matching algorithm
 - [ ] Admin review queue for reports
 - [ ] App Store + Play Store
+- [ ] Upgrade Twilio to paid (lift trial verified-number restriction)
 
 ---
 
