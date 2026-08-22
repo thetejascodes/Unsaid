@@ -101,6 +101,7 @@ const verifyOtp = async (phone: string, submittedCode: string) => {
     refreshTokenHash,
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
   });
-  return { consumedRow, accessToken, refreshToken, user };
+  const { phoneHash:_phoneHash, banReason, ...safeUser } = user;
+  return { accessToken, refreshToken, user: safeUser };
 };
 export { requestOtp, verifyOtp };
