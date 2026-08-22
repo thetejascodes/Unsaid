@@ -103,4 +103,4 @@ const verifyOtp = async (phone: string, submittedCode: string) => {
   });
   return { consumedRow, accessToken, refreshToken, user };
 };
-export { requestOtp,verifyOtp };
+export { requestOtp, verifyOtp };
