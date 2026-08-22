@@ -3,14 +3,18 @@ import {z} from "zod"
 import type { Request,Response,NextFunction } from "express";
 import type BaseDto from "../dto/BaseDto.js";
 
-const validate = <T>(dto:BaseDto<T>)=>{
+type DtoClass = {
+    validate: (data: unknown) => { value: unknown; errors: string[] | null }
+}  
+const validate = (DtoClass:DtoClass)=>{
     return (req:Request,res:Response,next:NextFunction)=>{
-        const {errors,value} =  dto.validate(req.body as object)
-        if(errors){
-        throw  ApiError.badRequest(errors.join("; "))
-       }
-       req.body = value
-       next();
+        const {errors,value} = DtoClass.validate(req.body)
+        if (errors) {
+            throw ApiError.badRequest(errors.join("; "))
+        }
+        req.body = value
+        next()
     }
 }
+
  export default validate;
