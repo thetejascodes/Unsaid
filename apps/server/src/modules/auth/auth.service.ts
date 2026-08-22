@@ -18,7 +18,6 @@ const requestOtp = async(phone:string)=>{
   const oneHourAgo  = new Date(Date.now() - 60 * 60 * 1000);
   const row = await db.select({recentCount: count() }).from(otpCodes).where(and(eq(otpCodes.phoneHash,phoneHash),gt(otpCodes.createdAt,oneHourAgo )));
   const recentCount = row[0]?.recentCount?? 0;
-  console.log(typeof recentCount, recentCount)
   if(recentCount >= 3){
     throw ApiError.tooManyRequests("Too many attempts, try again later")
   }

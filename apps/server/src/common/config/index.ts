@@ -28,5 +28,6 @@ const config = {
     fromNumber: optional("TWILIO_FROM_NUMBER", ""),
     toNumber: optional("TWILIO_TO_NUMBER", ""),
   },
+  otpStubMode: optional("OTP_STUB_MODE", "true")
 };
  export default config;
