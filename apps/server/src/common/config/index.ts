@@ -10,7 +10,7 @@ function required(key: string) {
   return value;
 }
 
-export const config = {
+const config = {
   jwt: {
     accessSecret: required("JWT_ACCESS_SECRET"),
     refreshSecret: required("JWT_REFRESH_SECRET"),
@@ -29,3 +29,4 @@ export const config = {
     toNumber: optional("TWILIO_TO_NUMBER", ""),
   },
 };
+ export default config;
