@@ -11,4 +11,14 @@ const requestOtp = async(req:Request,res:Response,next:NextFunction)=>{
         next(error)
     }
 }
+
+const verifyOtp = async(req:Request,res:Response,next:NextFunction)=>{
+    try {
+        const {phone,code} = req.body;
+        const result  = await authService.verifyOtp(phone,code)
+        return ApiResponse.ok(res,"Verified",result)
+    } catch (error) {
+        next(error)
+    }
+}
 export {requestOtp}
