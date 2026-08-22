@@ -21,4 +21,4 @@ const verifyOtp = async(req:Request,res:Response,next:NextFunction)=>{
         next(error)
     }
 }
-export {requestOtp}
+export {requestOtp,verifyOtp}
