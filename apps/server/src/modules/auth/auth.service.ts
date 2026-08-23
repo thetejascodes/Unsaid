@@ -108,30 +108,49 @@ const verifyOtp = async (phone: string, submittedCode: string) => {
 const refreshAccessToken = async (refreshToken: string) => {
   const payload = verifyRefreshToken(refreshToken);
   const refreshTokenHash = hashToken(refreshToken);
-  const tokens = await db.transaction(async(tx)=>{
+  const tokens = await db.transaction(async (tx) => {
     const [session] = await tx
-    .select()
-    .from(sessions)
-    .where(
-      and(
-        eq(sessions.refreshTokenHash, refreshTokenHash),
-        eq(sessions.userId, payload.userId)
+      .select()
+      .from(sessions)
+      .where(
+        and(
+          eq(sessions.refreshTokenHash, refreshTokenHash),
+          eq(sessions.userId, payload.userId),
+        ),
       )
-    ).for("update")
-    if(!session || session.revokedAt || session.expiresAt <  new Date(Date.now())){
+      .for("update");
+    if (
+      !session ||
+      session.revokedAt ||
+      session.expiresAt < new Date(Date.now())
+    ) {
       throw ApiError.unauthorized("Session invalid or expired");
     }
-     await tx.update(sessions).set({revokedAt:new Date(Date.now())}).where(eq(sessions.id,session.id))
-     const newAccessToken = generateAccessToken({userId:payload.userId})
-     const newRefreshToken = generateRefreshToken({userId:payload.userId})
-     const newRefreshTokenHash = hashToken(newRefreshToken)    
-      await tx.insert(sessions).values({
-       userId: payload.userId,
-        refreshTokenHash:newRefreshTokenHash,
-        expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-     })
-     return {newAccessToken,newRefreshToken}
-  })
-  return {accessToken:tokens.newAccessToken,refreshToken:tokens.newRefreshToken}
+    await tx
+      .update(sessions)
+      .set({ revokedAt: new Date(Date.now()) })
+      .where(eq(sessions.id, session.id));
+    const newAccessToken = generateAccessToken({ userId: payload.userId });
+    const newRefreshToken = generateRefreshToken({ userId: payload.userId });
+    const newRefreshTokenHash = hashToken(newRefreshToken);
+    await tx.insert(sessions).values({
+      userId: payload.userId,
+      refreshTokenHash: newRefreshTokenHash,
+      expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+    });
+    return { newAccessToken, newRefreshToken };
+  });
+  return {
+    accessToken: tokens.newAccessToken,
+    refreshToken: tokens.newRefreshToken,
+  };
 };
-export { requestOtp, verifyOtp, refreshAccessToken };
+
+const logout = async (refreshToken: string) => {
+  const refreshTokenHash = hashToken(refreshToken);
+  await db
+    .update(sessions)
+    .set({ revokedAt: new Date(Date.now()) })
+    .where(eq(sessions.refreshTokenHash, refreshTokenHash));
+};
+export { requestOtp, verifyOtp, refreshAccessToken, logout };
