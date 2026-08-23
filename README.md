@@ -323,6 +323,7 @@ router.post('/otp/request', validate(RequestOtpDto), authController.requestOtp)
 
 - [ADR-0001: Database Selection — SQL vs NoSQL](./docs/adr/0001-database-selection.md)
 - [ADR-0002: Authentication Strategy — Phone OTP, Sessions, Twilio](./docs/adr/0002-authentication-strategy.md)
+- [ADR-0003: Real-Time Matching Architecture](./docs/adr/0003-realtime-matching-architecture.md)
 
 ---
 
