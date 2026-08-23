@@ -1,24 +1,37 @@
-import type { Request,Response,NextFunction } from "express";
+import type { Request, Response, NextFunction } from "express";
 import ApiResponse from "../../common/utils/api-response.js";
 import * as authService from "./auth.service.js";
 
-const requestOtp = async(req:Request,res:Response,next:NextFunction)=>{
-    try {
-        const {phone} = req.body;
-        const result = await authService.requestOtp(phone);
-        return ApiResponse.ok(res,"OTP sent",result);
-    } catch (error) {
-        next(error)
-    }
-}
+const requestOtp = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { phone } = req.body;
+    const result = await authService.requestOtp(phone);
+    return ApiResponse.ok(res, "OTP sent", result);
+  } catch (error) {
+    next(error);
+  }
+};
 
-const verifyOtp = async(req:Request,res:Response,next:NextFunction)=>{
-    try {
-        const {phone,code} = req.body;
-        const result  = await authService.verifyOtp(phone,code)
-        return ApiResponse.ok(res,"Verified",result)
-    } catch (error) {
-        next(error)
-    }
-}
-export {requestOtp,verifyOtp}
+const verifyOtp = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { phone, code } = req.body;
+    const result = await authService.verifyOtp(phone, code);
+    return ApiResponse.ok(res, "Verified", result);
+  } catch (error) {
+    next(error);
+  }
+};
+const refreshAccessToken = async (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  try {
+    const { refreshToken } = req.body;
+    const result = await authService.refreshAccessToken(refreshToken);
+    return ApiResponse.ok(res, "Token refreshed", result);
+  } catch (error) {
+    next(error);
+  }
+};
+export { requestOtp, verifyOtp, refreshAccessToken };
