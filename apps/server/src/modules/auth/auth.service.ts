@@ -134,4 +134,4 @@ const refreshAccessToken = async (refreshToken: string) => {
   })
   return {accessToken:tokens.newAccessToken,refreshToken:tokens.newRefreshToken}
 };
-export { requestOtp, verifyOtp };
+export { requestOtp, verifyOtp,refreshAccessToken };
