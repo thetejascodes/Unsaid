@@ -9,4 +9,5 @@ const router = Router()
 router.post('/otp/request',validate(RequestOtpDto),authController.requestOtp);
 router.post('/otp/verify',validate(VerifyOtpDto),authController.verifyOtp);
 router.post('/refresh',validate(RefreshAccessTokenDto),authController.refreshAccessToken)
+router.post('/logout',validate(RefreshAccessTokenDto),authController.logout)
 export default router;
