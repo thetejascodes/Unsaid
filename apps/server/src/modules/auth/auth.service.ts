@@ -101,7 +101,21 @@ const verifyOtp = async (phone: string, submittedCode: string) => {
     refreshTokenHash,
     expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
   });
-  const { phoneHash:_phoneHash, banReason, ...safeUser } = user;
+  const { phoneHash: _phoneHash, banReason, ...safeUser } = user;
   return { accessToken, refreshToken, user: safeUser };
+};
+
+const refreshAccessToken = async (refreshToken: string) => {
+  const payload = verifyRefreshToken(refreshToken);
+  const refreshTokenHash = hashToken(refreshToken);
+  const session = await db
+    .select()
+    .from(sessions)
+    .where(
+      and(
+        eq(sessions.refreshTokenHash, refreshTokenHash),
+        eq(sessions.userId, payload.userId)
+      ),
+    );
 };
 export { requestOtp, verifyOtp };

@@ -1,5 +1,6 @@
 import jwt, { type SignOptions } from 'jsonwebtoken'
 import config  from '../config/index.js'
+import ApiError from './api-error.js'
 
 export const generateAccessToken = (payload: { userId: string }) => {
   const options: SignOptions = {
@@ -9,7 +10,11 @@ export const generateAccessToken = (payload: { userId: string }) => {
 }
 
 export const verifyAccessToken = (token: string) => {
-  return jwt.verify(token, config.jwt.accessSecret)
+  const payload = jwt.verify(token, config.jwt.accessSecret)
+  if(typeof payload === 'string' || !('userId' in payload)){
+        throw ApiError.internal("unexpected token payload")
+  }
+  return payload;
 }
 
 export const generateRefreshToken = (payload: { userId: string }) => {
@@ -20,5 +25,9 @@ export const generateRefreshToken = (payload: { userId: string }) => {
 }
 
 export const verifyRefreshToken = (token: string) => {
-  return jwt.verify(token, config.jwt.refreshSecret)
+  const payload = jwt.verify(token, config.jwt.refreshSecret)
+  if(typeof payload === "string" || !('userId' in payload)){
+    throw ApiError.internal("unexpected token payload")
+  }
+  return payload;
 }
