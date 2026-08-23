@@ -34,4 +34,14 @@ const refreshAccessToken = async (
     next(error);
   }
 };
-export { requestOtp, verifyOtp, refreshAccessToken };
+
+const logout = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const {refreshToken} = req.body;
+    await authService.logout(refreshToken)
+    return ApiResponse.noContent(res);
+  } catch (error) {
+    next(error)
+  }
+};
+export { requestOtp, verifyOtp, refreshAccessToken, logout };
