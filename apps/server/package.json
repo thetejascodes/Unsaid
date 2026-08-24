@@ -25,6 +25,7 @@
   "dependencies": {
     "@types/jsonwebtoken": "^9.0.10",
     "@types/redis": "^4.0.10",
+    "@types/socket.io": "^3.0.1",
     "@types/twilio": "^3.19.2",
     "bcryptjs": "^3.0.3",
     "dotenv": "^17.4.2",
@@ -34,6 +35,7 @@
     "mongoose": "^9.9.1",
     "pg": "^8.23.0",
     "redis": "^6.2.1",
+    "socket.io": "^4.8.3",
     "twilio": "^6.1.0",
     "zod": "^4.4.3"
   },

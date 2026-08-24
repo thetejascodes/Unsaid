@@ -2,7 +2,7 @@ import { createClient } from "redis";
 import config from "../config/index.js";
 
 const redisClient = createClient({
-  url: config.redis.url,
+  url: config.valkey.url,
 });
 
 redisClient.on("error", (err) => {

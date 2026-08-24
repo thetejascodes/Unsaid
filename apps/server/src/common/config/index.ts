@@ -20,8 +20,8 @@ const config = {
   database: {
     url: required("DATABASE_URL"),
   },
-  redis: {
-    url: required("REDIS_URL"),
+  valkey: {
+    url: required("VALKEY_URL"),
   },
   port: Number(optional("PORT", "8000")),
   twilio: {
