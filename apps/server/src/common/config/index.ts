@@ -20,6 +20,9 @@ const config = {
   database: {
     url: required("DATABASE_URL"),
   },
+  redis: {
+    url: required("REDIS_URL"),
+  },
   port: Number(optional("PORT", "8000")),
   twilio: {
     accountSid: optional("TWILIO_ACCOUNT_SID", ""),
@@ -28,6 +31,6 @@ const config = {
     fromNumber: optional("TWILIO_FROM_NUMBER", ""),
     toNumber: optional("TWILIO_TO_NUMBER", ""),
   },
-  otpStubMode: optional("OTP_STUB_MODE", "true")
+  otpStubMode: optional("OTP_STUB_MODE", "true"),
 };
- export default config;
+export default config;
