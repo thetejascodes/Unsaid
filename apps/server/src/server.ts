@@ -1,10 +1,15 @@
 import "dotenv/config";
+import { createServer } from "node:http";
 import app from "./app.js";
 import config from "./common/config/index.js";
+import { attachWebSocketServer } from "./common/ws/server.js";
+
 const port = Number(config.port);
 
 const startServer = async () => {
-  app.listen(port, () => {
+  const httpServer = createServer(app)
+  attachWebSocketServer(httpServer);
+  httpServer.listen(port, () => {
     console.log(`🚀 Server is running on port ${port}`);
   });
 };
