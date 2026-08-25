@@ -1,9 +1,5 @@
 import {WebSocket} from "ws";
-
-interface AuthenticatedWebSocket extends WebSocket{
-    userId:string;
-    queuedMood?:string;
-}
+import type { AuthenticatedWebSocket } from "../../common/ws/server.js";
 
 const connectedSockets = new Map<string,AuthenticatedWebSocket>();
 
