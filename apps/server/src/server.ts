@@ -4,10 +4,12 @@ import app from "./app.js";
 import config from "./common/config/index.js";
 import { attachWebSocketServer } from "./common/ws/server.js";
 import { registerMatchingHandlers } from "./modules/matching/matching.gateway.js";
+import { connectRedis } from "./common/redis/index.js";
 
 const port = Number(config.port);
 
 const startServer = async () => {
+  await connectRedis();
   const httpServer = createServer(app)
   attachWebSocketServer(httpServer);
   registerMatchingHandlers();
