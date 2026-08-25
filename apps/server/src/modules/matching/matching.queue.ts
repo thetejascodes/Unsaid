@@ -75,6 +75,19 @@ export const joinQueue = async (
   }
 };
 
+export const leaveQueue = async (userId: string, mood: string) => {
+  if (!mood) {
+    return;
+  }
+  const entries = await redis.LRANGE(queueKey(mood), 0, -1);
+  for (const entry of entries) {
+    const parsed = JSON.parse(entry);
+    if (parsed.userId === userId) {
+      await redis.LREM(queueKey(mood), 1, entry);
+      break;
+    }
+  }
+};
 export const findAndRemoveCandidate = async (
   mood: string,
   excludeUserId: string,
