@@ -3,7 +3,7 @@ import { IncomingMessage, Server } from "node:http";
 import { Socket } from "node:net";
 import { verifyAccessToken } from "../utils/jwt.utils.js";
 
-interface AuthenticatedWebSocket extends WebSocket {
+export interface AuthenticatedWebSocket extends WebSocket {
   userId: string;
   queuedMood?: string;
 }
