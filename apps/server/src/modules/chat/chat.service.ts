@@ -30,8 +30,8 @@ const getRoomHistory = async(roomId:string,requestingUserId:string)=>{
     if(requestingUserId !== room.userAId && requestingUserId !== room.userBId){
         throw ApiError.forbidden("not a participant in this room");
     }
-    const [message] = await db.select().from(messages).where(eq(messages.roomId,roomId)).orderBy(asc(messages.sentAt))
-    return message;
+    const messageList = await db.select().from(messages).where(eq(messages.roomId,roomId)).orderBy(asc(messages.sentAt))
+    return messageList;
 };
 
 const endRoom = async(roomId:string)=>{
