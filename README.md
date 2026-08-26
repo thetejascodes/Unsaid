@@ -57,25 +57,25 @@ User selects mood + interests
    WebSocket (JOIN_QUEUE)
         │
         ▼
-   Redis Queue (mood + interest based, excludes blocked/banned)
+   Redis Queue (mood-based, excludes blocked/banned) ✅
         │
         ▼
-   Matching Service (score-based algorithm)
+   Matching Service (exact mood match, FIFO — v1) ✅
         │
         ▼
-   Room Created → both users notified (MATCHED)
+   Room Created → both users notified (MATCHED) ✅
         │
-        ├──► Messages flow via WebSocket → persisted (Postgres, encrypted at rest)
+        ├──► Messages flow via WebSocket → persisted (Postgres, encrypted at rest) — Phase 4
         │
-        ├──► AI moderation on every message (Claude API)
+        ├──► AI moderation on every message (Claude API) — Phase 4
         │        │
         │        └──► flagged content → review queue / crisis resource surfaced
         │
-        ├──► 30s silence → AI icebreaker generated
+        ├──► 30s silence → AI icebreaker generated — Phase 4
         │
-        ├──► Report / Block → immediate re-match exclusion + review queue
+        ├──► Report / Block → immediate re-match exclusion + review queue — Phase 4
         │
-        └──► Ban issued → denylist check on every WS message, active sockets dropped
+        └──► Ban issued → denylist check on every WS message, active sockets dropped ✅ (matching), Phase 4 (chat)
 ```
 
 ---
@@ -86,10 +86,10 @@ User selects mood + interests
 |---|---|
 | Mobile App | React Native (Expo, SDK 57) |
 | Backend | Node.js + Express + TypeScript |
-| Real-time | WebSockets (ws) — pending (Phase 3) |
+| Real-time | WebSockets (`ws`) — ✅ built and tested |
 | Auth | Phone OTP (Twilio, Restricted API Key) + JWT (access + refresh) |
 | Validation | Zod, via a shared `BaseDto` (static-class pattern) + `validate` middleware |
-| Matching & State | Redis 7 — pending (Phase 3) |
+| Matching & State | Redis 7 (Valkey) — ✅ built and tested |
 | Persistence | PostgreSQL 17 |
 | ORM | Drizzle ORM + Drizzle Kit |
 | Event Logging | Structured logs → (Kafka only if/when scale needs it) |
@@ -121,20 +121,28 @@ unsaid/
 │   │   │   │   │   ├── users.service.ts        # getMe, updateMe (partial updates)
 │   │   │   │   │   ├── users.controllers.ts
 │   │   │   │   │   └── users.routes.ts
-│   │   │   │   ├── matching/      # ⏳ Phase 3 — queue + matching algorithm
+│   │   │   │   ├── matching/      # ✅ done — real-time queue + matching, fully tested
+│   │   │   │   │   ├── socket-registry.ts      # Map<userId, WebSocket>
+│   │   │   │   │   ├── matching.queue.ts        # joinQueue, leaveQueue, findAndRemoveCandidate
+│   │   │   │   │   └── matching.gateway.ts       # registers JOIN_QUEUE/LEAVE_QUEUE handlers
 │   │   │   │   ├── chat/          # ⏳ Phase 4 — WebSocket gateway + messaging + history
 │   │   │   │   ├── moderation/    # ⏳ Phase 4 — reports, blocks, bans
 │   │   │   │   ├── ai/            # ⏳ Phase 4 — icebreaker + moderation calls
 │   │   │   │   └── upload/        # ⏳ Phase 4 — image uploads
 │   │   │   ├── common/
-│   │   │   │   ├── db/            # Drizzle client + merged schema (redis.ts pending — Phase 3)
+│   │   │   │   ├── db/            # Drizzle client + merged schema
+│   │   │   │   ├── redis/         # ✅ Redis client singleton + centralized key builders (keys.ts)
+│   │   │   │   ├── ws/            # ✅ server.ts — shared WebSocket transport (auth at handshake,
+│   │   │   │   │                    registerMessageHandler/onDisconnect API, used by matching now,
+│   │   │   │   │                    chat later)
 │   │   │   │   ├── config/        # Env loading + validation (fail-fast)
 │   │   │   │   ├── dto/           # BaseDto — static-class Zod wrapper
 │   │   │   │   ├── utils/         # jwt.utils, api-error, api-response
 │   │   │   │   └── middlewares/   # error-handler, validate, auth (isAuthenticated)
 │   │   │   ├── types/
 │   │   │   │   └── express.d.ts   # Request.userId augmentation
-│   │   │   └── app.ts             # mounted routes, health check, error handler
+│   │   │   ├── app.ts             # mounted routes, health check, error handler
+│   │   │   └── server.ts          # createServer, attachWebSocketServer, connectRedis, registerMatchingHandlers
 │   │   ├── drizzle/                # Generated SQL migrations
 │   │   ├── drizzle.config.ts
 │   │   ├── Dockerfile
@@ -150,9 +158,10 @@ unsaid/
 │   ├── backend-build-plan.md      # (gitignored — private working notes, full pseudocode per phase)
 │   └── adr/
 │       ├── 0001-database-selection.md
-│       └── 0002-authentication-strategy.md
+│       ├── 0002-authentication-strategy.md
+│       └── 0003-realtime-matching-architecture.md
 │
-└── docker-compose.yml             # Postgres + Redis + server, for local dev
+└── docker-compose.yml             # Postgres 17 + Valkey (Redis-compatible) + server, for local dev
 ```
 
 ---
@@ -176,7 +185,7 @@ npm install
 
 ```bash
 docker compose up -d
-# starts Postgres 17 + Redis 7
+# starts Postgres 17 + Valkey (Redis-compatible)
 ```
 
 ### 3. Configure env
@@ -203,7 +212,19 @@ npm run dev
 # Server: http://localhost:8000
 ```
 
-### 6. Run the mobile app
+### 6. Test a live match (two terminals/Postman WebSocket tabs)
+
+```bash
+# get two real accessTokens via /api/auth/otp/request + /verify for two different phone numbers, then:
+ws://localhost:8000/ws?accessToken=<TOKEN_1>
+ws://localhost:8000/ws?accessToken=<TOKEN_2>
+
+# send from both, same mood:
+{"type":"JOIN_QUEUE","mood":"lonely","interests":["music"]}
+# both sockets receive MATCHED with a shared roomId
+```
+
+### 7. Run the mobile app
 
 ```bash
 cd apps/mobile
@@ -218,7 +239,7 @@ npx expo start
 | Endpoint | Method | Auth required | Payload | Description |
 |---|---|---|---|---|
 | `/api/auth/otp/request` | POST | No | `phone` | Sends OTP, rate-limited (3/hr per phone) |
-| `/api/auth/otp/verify` | POST | No | `phone, code` | Verifies OTP, creates user if new, returns access + refresh JWT |
+| `/api/auth/otp/verify` | POST | No | `phone, code` | Verifies OTP, creates user if new, returns access + refresh JWT — rejects with 403 if banned |
 | `/api/auth/refresh` | POST | No* | `refreshToken` | Rotates session, returns new token pair |
 | `/api/auth/logout` | POST | Yes (Bearer) | `refreshToken` | Revokes the session |
 
@@ -237,35 +258,37 @@ Access tokens are short-lived (~15 min). Refresh tokens are rotated on every use
 
 ---
 
-## 🌐 WebSocket Events — ⏳ Phase 3/4, not yet built
+## 🌐 WebSocket — ✅ matching events live and tested, chat events pending Phase 4
+
+Auth happens at the connection handshake (`ws://host/ws?accessToken=...`) — an invalid or missing token gets the connection destroyed before it ever opens, not accepted and closed after. See [ADR-0003](./docs/adr/0003-realtime-matching-architecture.md).
 
 ### Client → Server
 
-| Event | Payload | Description |
+| Event | Payload | Status |
 |---|---|---|
-| `JOIN_QUEUE` | `mood, interests[]` | Join matching queue |
-| `LEAVE_QUEUE` | — | Leave before match |
-| `SEND_MESSAGE` | `content, messageType, imageUrl?` | Send a message |
-| `TYPING` | — | Typing indicator |
-| `STOP_TYPING` | — | Stop typing |
-| `LEAVE_ROOM` | — | Leave current chat |
-| `REPORT` | `messageId?, reason` | Report current partner/message |
-| `BLOCK` | — | Block current partner, end chat |
+| `JOIN_QUEUE` | `mood, interests[]` | ✅ Live |
+| `LEAVE_QUEUE` | — | ✅ Live (explicit) |
+| `SEND_MESSAGE` | `content, messageType, imageUrl?` | ⏳ Phase 4 |
+| `TYPING` / `STOP_TYPING` | — | ⏳ Phase 4 |
+| `LEAVE_ROOM` | — | ⏳ Phase 4 |
+| `REPORT` | `messageId?, reason` | ⏳ Phase 4 |
+| `BLOCK` | — | ⏳ Phase 4 |
 
 ### Server → Client
 
-| Event | Payload | Description |
+| Event | Payload | Status |
 |---|---|---|
-| `QUEUED` | `position` | Added to queue |
-| `MATCHED` | `roomId, partnerUsername, partnerMood` | Match found |
-| `MESSAGE` | `message` | New message |
-| `ICEBREAKER` | `suggestion` | AI conversation starter |
-| `PARTNER_TYPING` | — | Partner is typing |
-| `PARTNER_STOP_TYPING` | — | Partner stopped |
-| `PARTNER_LEFT` | — | Partner disconnected |
-| `REPORT_RECEIVED` | — | Confirms report was logged |
-| `SESSION_REVOKED` | `reason` | Account banned/suspended, socket closing |
-| `ERROR` | `message` | Something went wrong |
+| `QUEUED` | `position` | ✅ Live |
+| `MATCHED` | `roomId, partnerId, partnerMood` | ✅ Live |
+| `SESSION_REVOKED` | — | ✅ Live (ban denylist check in matching) |
+| `MESSAGE` | `message` | ⏳ Phase 4 |
+| `ICEBREAKER` | `suggestion` | ⏳ Phase 4 |
+| `PARTNER_TYPING` / `PARTNER_STOP_TYPING` | — | ⏳ Phase 4 |
+| `PARTNER_LEFT` | — | ⏳ Phase 4 |
+| `REPORT_RECEIVED` | — | ⏳ Phase 4 |
+| `ERROR` | `message` | ✅ Live (malformed/unknown message types) |
+
+**Known v1 limitation, documented not accidental:** if a popped queue candidate turns out to be blocked, they are currently discarded rather than re-queued — the requesting user gets no match that round rather than the blocked user losing their place unfairly to a third party. Verified live; see [ADR-0003](./docs/adr/0003-realtime-matching-architecture.md) for the reasoning and the Redis Pub/Sub caveat for horizontal scaling (single-instance only for now).
 
 ---
 
@@ -288,7 +311,7 @@ Access tokens are short-lived (~15 min). Refresh tokens are rotated on every use
 
 - **PostgreSQL 17**, single primary datastore for all relational and message data. See [ADR-0001](./docs/adr/0001-database-selection.md).
 - **Drizzle ORM**, schema defined module-wise — each module owns the tables it's responsible for, re-exported through `common/db/schema.ts` for Drizzle Kit to discover.
-- **Redis 7** — ephemeral state only: matching queue, active ban denylist (Phase 3, not yet wired up). Not a system of record.
+- **Redis (Valkey)** — ephemeral state only: matching queue (`queue:{mood}`), active ban denylist (`ban:{userId}`), both via centralized key builders in `common/redis/keys.ts`. Not a system of record.
 - Migrations generated via `drizzle-kit generate`, applied via `drizzle-kit migrate`.
 
 ---
@@ -308,11 +331,12 @@ router.post('/otp/request', validate(RequestOtpDto), authController.requestOtp)
 
 ## 🛡️ Safety & Data
 
-- Messages will be **persisted** and **encrypted at rest** (Phase 4).
 - Phone numbers are stored hashed, never in plaintext beyond the OTP send step.
 - OTP codes and refresh tokens are hashed before storage — never kept in plaintext.
-- OTP consumption and session rotation both use row-locked transactions to prevent replay/race conditions.
-- Bans will be enforced at the WebSocket layer via a Redis denylist checked on every message (Phase 4).
+- OTP consumption and session rotation both use row-locked transactions (`FOR UPDATE`) to prevent replay/race conditions; the matching queue's equivalent race is prevented via Redis's atomic `LPOP` — see [ADR-0003](./docs/adr/0003-realtime-matching-architecture.md).
+- **Bans are enforced immediately, verified live in two places:** login itself is rejected with a 403 for a banned account (`verifyOtp`), and matching is rejected via a Redis denylist check (`joinQueue`) — a banned user cannot obtain fresh credentials *or* queue for a match. Message-level enforcement (closing an active socket mid-conversation) lands in Phase 4.
+- **Blocking is enforced and verified live** — two users who have blocked each other never match, confirmed against real data.
+- Messages will be **persisted** and **encrypted at rest** (Phase 4).
 - Twilio uses a Restricted API Key scoped to SMS-sending only, not the full account Auth Token. See [ADR-0002](./docs/adr/0002-authentication-strategy.md).
 - `OTP_STUB_MODE` toggles between logging the code (dev) and sending real SMS via Twilio — defaults to stub, flip to `false` deliberately per environment.
 - Data retention and account/message deletion policy: **TBD — required before public launch**.
@@ -323,7 +347,7 @@ router.post('/otp/request', validate(RequestOtpDto), authController.requestOtp)
 
 - [ADR-0001: Database Selection — SQL vs NoSQL](./docs/adr/0001-database-selection.md)
 - [ADR-0002: Authentication Strategy — Phone OTP, Sessions, Twilio](./docs/adr/0002-authentication-strategy.md)
-- [ADR-0003: Real-Time Matching Architecture](./docs/adr/0003-realtime-matching-architecture.md)
+- [ADR-0003: Real-Time Matching Architecture — WebSocket hosting, Redis concurrency](./docs/adr/0003-realtime-matching-architecture.md)
 
 ---
 
@@ -333,18 +357,20 @@ router.post('/otp/request', validate(RequestOtpDto), authController.requestOtp)
 docker compose up -d --build
 ```
 
+Postgres 17 + Valkey (Redis-compatible), both with healthchecks.
+
 ---
 
 ## 🗺️ Roadmap
 
 ### V1 — Backend
-- [x] Monorepo, Docker, Postgres 17, Redis 7 infra
+- [x] Monorepo, Docker, Postgres 17, Valkey infra
 - [x] Config layer, JWT utils, DTO/validation layer, error handling
 - [x] All 7 tables schemad (`auth`, `chat`, `moderation`)
-- [x] **Phase 1 — Auth: complete.** OTP request/verify, session rotation, logout, `isAuthenticated` middleware — all tested via Postman including failure paths
+- [x] **Phase 1 — Auth: complete.** OTP request/verify, session rotation, logout, `isAuthenticated` middleware — tested including failure paths
 - [x] **Phase 2 — Users: complete.** Profile get/update with partial-update support, sanitized responses
-- [ ] **Phase 3 — Matching.** Redis client, WebSocket gateway, mood/interest queue
-- [ ] **Phase 4 — Chat + Moderation.** Message persistence, AI moderation, icebreaker, reports/blocks, ban enforcement
+- [x] **Phase 3 — Matching: complete.** Redis client, shared WebSocket transport (`common/ws`), mood-based queue, atomic candidate matching, block exclusion, ban enforcement, disconnect cleanup — all 5 acceptance tests verified against live data
+- [ ] **Phase 4 — Chat + Moderation.** Message persistence, AI moderation, icebreaker, reports/blocks, message-level ban enforcement
 - [ ] Data retention / deletion policy
 
 ### V2 — Mobile
@@ -355,8 +381,9 @@ docker compose up -d --build
 - [ ] Push notifications
 
 ### V3 — Launch
-- [ ] Better matching algorithm
+- [ ] Better matching algorithm (interest-weighted scoring, currently exact-mood FIFO)
 - [ ] Admin review queue for reports
+- [ ] Redis Pub/Sub for multi-instance WebSocket scaling
 - [ ] App Store + Play Store
 - [ ] Upgrade Twilio to paid (lift trial verified-number restriction)
 
