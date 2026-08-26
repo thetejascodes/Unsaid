@@ -35,4 +35,4 @@ const getRoomHistory = async(roomId:string,requestingUserId:string)=>{
 }
 
 
-export { persistMessage }
+export { persistMessage, getRoomHistory }
