@@ -9,7 +9,7 @@ const persistMessage = async (
   content: string,
   messageType: string,
   imageUrl: string,
-  flagged: string,
+  flagged: boolean,
 ) => {
     const [message] = await db.insert(messages).values({
         roomId,
