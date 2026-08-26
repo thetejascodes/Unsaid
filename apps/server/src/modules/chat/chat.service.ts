@@ -38,4 +38,4 @@ const endRoom = async(roomId:string)=>{
     const update = await db.update(rooms).set({endedAt: new Date(Date.now())}).where(eq(rooms.id,roomId))
     return update;
 }
-export { persistMessage, getRoomHistory }
+export { persistMessage, getRoomHistory,endRoom }
