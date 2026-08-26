@@ -1,5 +1,7 @@
+import { asc, eq } from "drizzle-orm";
 import { db } from "../../common/db/index.js";
-import { messages } from "./chat.schema.js";
+import { messages,  rooms } from "./chat.schema.js";
+import ApiError from "../../common/utils/api-error.js";
 
 const persistMessage = async (
   roomId: string,
@@ -19,6 +21,18 @@ const persistMessage = async (
     }).returning()
     return message;
 };
+
+const getRoomHistory = async(roomId:string,requestingUserId:string)=>{
+    const [room] = await db.select().from(rooms).where(eq(rooms.id,roomId))
+    if(!room){
+        throw ApiError.notFound("Room not found")
+    }
+    if(requestingUserId === room.userAId && ! room.userBId){
+        throw ApiError.forbidden("not a participant in this room");
+    }
+    const [message] = await db.select().from(messages).where(eq(messages.roomId,roomId)).orderBy(asc(messages.sentAt))
+    return message;
+}
 
 
 export { persistMessage }
