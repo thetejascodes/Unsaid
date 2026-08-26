@@ -32,7 +32,10 @@ const getRoomHistory = async(roomId:string,requestingUserId:string)=>{
     }
     const [message] = await db.select().from(messages).where(eq(messages.roomId,roomId)).orderBy(asc(messages.sentAt))
     return message;
+};
+
+const endRoom = async(roomId:string)=>{
+    const update = await db.update(rooms).set({endedAt: new Date(Date.now())}).where(eq(rooms.id,roomId))
+    return update;
 }
-
-
 export { persistMessage, getRoomHistory }
