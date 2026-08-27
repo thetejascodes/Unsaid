@@ -32,5 +32,9 @@ const config = {
     toNumber: optional("TWILIO_TO_NUMBER", ""),
   },
   otpStubMode: optional("OTP_STUB_MODE", "true"),
+  ai: {
+    apiKey: required("NVIDIA_API_KEY"),
+    moderationModel: optional("MODERATION_MODEL", "meta/muse-glimmer-30b"),
+  }
 };
 export default config;
