@@ -6,7 +6,7 @@ const client = new OpenAI({
   baseURL: config.ai.baseUrl,
 });
 
-const checkModeration = async (content: string) => {
+export const checkModeration = async (content: string) => {
   try {
     const completion = await client.chat.completions.create({
       model: config.ai.moderationModel,
