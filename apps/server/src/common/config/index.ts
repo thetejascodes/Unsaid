@@ -34,14 +34,8 @@ const config = {
   otpStubMode: optional("OTP_STUB_MODE", "true"),
   ai: {
     apiKey: required("OPENROUTER_API_KEY"),
-    moderationModel: optional(
-      "MODERATION_MODEL",
-      "meta-llama/llama-3.1-8b-instruct",
-    ),
-    icebreakerModel: optional(
-      "ICEBREAKER_MODEL",
-      "meta-llama/llama-3.1-8b-instruct",
-    ),
+    moderationModel: optional("MODERATION_MODEL", "meta-llama/llama-3.1-8b-instruct"),
+    icebreakerModel: optional("ICEBREAKER_MODEL", "meta-llama/llama-3.1-8b-instruct"),
     baseUrl: optional("AI_BASE_URL", "https://openrouter.ai/api/v1"),
   },
 };
