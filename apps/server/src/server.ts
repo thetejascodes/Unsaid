@@ -7,7 +7,7 @@ import { registerMatchingHandlers } from "./modules/matching/matching.gateway.js
 import { connectRedis } from "./common/redis/index.js";
 import { registerChatHandlers } from "./modules/chat/chat.gateway.js";
 import { registerModerationHandlers } from "./modules/moderation/moderation.gateway.js";
-
+import { startIcebreakerTimer } from "./modules/chat/icebreaker-timer.js";
 const port = Number(config.port);
 
 const startServer = async () => {
@@ -17,6 +17,7 @@ const startServer = async () => {
   registerMatchingHandlers();
   registerChatHandlers();
   registerModerationHandlers();
+  startIcebreakerTimer();
   httpServer.listen(port, () => {
     console.log(`🚀 Server is running on port ${port}`);
   });
