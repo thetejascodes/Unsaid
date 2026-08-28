@@ -14,8 +14,8 @@ export const registerModerationHandlers = () => {
       const partnerId = await lookupPartnerId(msg.roomId, ws.userId);
       if (partnerId) {
         await createReport(ws.userId, partnerId, msg.messageId, msg.reason);
-        ws.send(JSON.stringify({ type: "REPORT_RECEIVED" }));
       }
+      ws.send(JSON.stringify({ type: "REPORT_RECEIVED" }));
     },
   );
   registerMessageHandler(
