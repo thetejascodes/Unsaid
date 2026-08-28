@@ -9,7 +9,7 @@ import { getSocket } from "../matching/socket-registry.js";
 
 export const registerModerationHandlers = () => {
   registerMessageHandler(
-    "REPOR",
+    "REPORT",
     async (ws: AuthenticatedWebSocket, msg: any) => {
       const partnerId = await lookupPartnerId(msg.roomId, ws.userId);
       if (partnerId) {
