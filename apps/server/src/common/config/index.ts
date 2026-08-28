@@ -33,10 +33,16 @@ const config = {
   },
   otpStubMode: optional("OTP_STUB_MODE", "true"),
   ai: {
-    apiKey: required("NVIDIA_API_KEY"),
-    moderationModel: optional("MODERATION_MODEL", "meta/muse-glimmer-30b"),
-    icebreakerModel: optional("ICEBREAKER_MODEL", "meta/muse-glimmer-30b"),
-    baseUrl:optional("baseURL","https://integrate.api.nvidia.com/v1")
-  }
+    apiKey: required("OPENROUTER_API_KEY"),
+    moderationModel: optional(
+      "MODERATION_MODEL",
+      "meta-llama/llama-3.1-8b-instruct",
+    ),
+    icebreakerModel: optional(
+      "ICEBREAKER_MODEL",
+      "meta-llama/llama-3.1-8b-instruct",
+    ),
+    baseUrl: optional("AI_BASE_URL", "https://openrouter.ai/api/v1"),
+  },
 };
 export default config;
