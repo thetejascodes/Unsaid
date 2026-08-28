@@ -18,4 +18,18 @@ export const registerModerationHandlers = () => {
       }
     },
   );
+  registerMessageHandler(
+    "BLOCK",
+    async (ws: AuthenticatedWebSocket, msg: any) => {
+      const partnerId = await lookupPartnerId(msg.roomId, ws.userId);
+      if (partnerId) {
+        await createBlock(ws.userId, partnerId);
+        await endRoom(msg.roomId);
+        const partnerSocket = getSocket(partnerId);
+        if (partnerSocket) {
+          partnerSocket.send(JSON.stringify({ type: "PARTNER_LEFT" }));
+        }
+      }
+    },
+  );
 };
