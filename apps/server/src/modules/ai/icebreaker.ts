@@ -11,9 +11,10 @@ export const generateIcebreaker = async (context: {
         {
           role: "user",
           content:
-            "Suggest a short, warm conversation starter for two strangers who matched because they both feel " +
+            "Two strangers just matched because they both feel " +
             context.mood +
-            ". One sentence, casual, no therapy-speak.",
+            ". Give me ONE single casual conversation starter for them, as a single sentence. " +
+            "Do not give options, a list, numbering, or any preamble — output only the one sentence itself, nothing else.",
         },
       ],
       temperature: 0.9,
@@ -22,6 +23,13 @@ export const generateIcebreaker = async (context: {
     });
 
     const suggestion = completion.choices[0]?.message?.content;
+    if (!suggestion) {
+      console.error(
+        "Icebreaker generation returned no content (finish_reason:",
+        completion.choices[0]?.finish_reason,
+        ")",
+      );
+    }
     return suggestion || "What's been on your mind today?";
   } catch (error) {
     console.error("Icebreaker generation failed:", error);
