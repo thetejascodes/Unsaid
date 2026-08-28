@@ -6,15 +6,17 @@ import { attachWebSocketServer } from "./common/ws/server.js";
 import { registerMatchingHandlers } from "./modules/matching/matching.gateway.js";
 import { connectRedis } from "./common/redis/index.js";
 import { registerChatHandlers } from "./modules/chat/chat.gateway.js";
+import { registerModerationHandlers } from "./modules/moderation/moderation.gateway.js";
 
 const port = Number(config.port);
 
 const startServer = async () => {
   await connectRedis();
-  const httpServer = createServer(app)
+  const httpServer = createServer(app);
   attachWebSocketServer(httpServer);
   registerMatchingHandlers();
   registerChatHandlers();
+  registerModerationHandlers();
   httpServer.listen(port, () => {
     console.log(`🚀 Server is running on port ${port}`);
   });
