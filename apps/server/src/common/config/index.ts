@@ -35,6 +35,7 @@ const config = {
   ai: {
     apiKey: required("NVIDIA_API_KEY"),
     moderationModel: optional("MODERATION_MODEL", "meta/muse-glimmer-30b"),
+    icebreakerModel: optional("ICEBREAKER_MODEL", "meta/muse-glimmer-30b"),
     baseUrl:optional("baseURL","https://integrate.api.nvidia.com/v1")
   }
 };
