@@ -319,6 +319,96 @@ There is currently no automated test command configured in `apps/server/package.
 - [AI provider strategy and fail-open moderation](docs/adr/0004-ai-provider-strategy.md)
 - [Backend build plan](docs/backend-build-plan.md)
 
+## Testing & Debugging
+
+### Manual API Testing
+
+Use **Postman** or similar tools to test HTTP endpoints. Import the base URL and auth flow:
+
+1. **Request OTP**: `POST /api/auth/otp/request` with `{ "phone": "+1234567890" }`
+2. **Verify OTP**: `POST /api/auth/otp/verify` with `{ "phone": "+1234567890", "otp": "<logged-to-console>" }`
+3. **Store tokens**: Copy `accessToken` and `refreshToken` from the response
+4. **Set Authorization header**: `Authorization: Bearer <accessToken>`
+5. **Get profile**: `GET /api/users/me`
+
+### WebSocket Testing
+
+Use Postman's WebSocket client or `wscat`:
+
+```bash
+npm install -g wscat
+wscat -c "ws://localhost:8000/ws?accessToken=<ACCESS_TOKEN>"
+```
+
+Then send events as JSON:
+
+```json
+{ "type": "JOIN_QUEUE", "mood": "anxious", "interests": ["music"] }
+```
+
+### Debugging
+
+- **Database queries**: Open Drizzle Studio with `npm run db:studio` to inspect tables in real time
+- **Redis state**: Use `redis-cli` to inspect Valkey queues and ban denylist
+- **Server logs**: Run `npm run dev` to see console logs (includes OTP codes in stub mode)
+
+## Troubleshooting
+
+| Issue | Solution |
+| --- | --- |
+| **`ECONNREFUSED` on PostgreSQL** | Check Docker: `docker ps`. If Postgres is not running, run `docker compose -f apps/server/docker-compose.yml up -d` |
+| **`ECONNREFUSED` on Valkey** | Same as above; both services start together |
+| **Migration errors** | Ensure `DATABASE_URL` is correct and Postgres is running. Try `npx drizzle-kit migrate --help` |
+| **OTP never arrives via SMS** | Ensure `OTP_STUB_MODE=false` and Twilio vars are set. In stub mode, check the server console |
+| **WebSocket connection rejected** | Verify the access token is valid and included in the query string: `ws://localhost:8000/ws?accessToken=<TOKEN>` |
+| **AI moderation fails silently** | Check `NVIDIA_API_KEY` and `AI_BASE_URL`. The system is designed to fail open — messages are sent regardless, with a logged error |
+| **Port 8000 already in use** | Change `PORT` env var or kill the process: `lsof -i :8000` (macOS/Linux) or `netstat -ano` (Windows) |
+
+## Project Conventions
+
+- **TypeScript strict mode** — All files must pass strict type checking
+- **DTO pattern** — Use Zod-validated request bodies in `src/modules/*/dto/`
+- **Error handling** — Leverage centralized middleware in `src/common/middlewares/errorHandler.ts`
+- **Async/await** — Prefer over `.then()` chains for readability
+- **Environment variables** — Read via `common/config/index.ts`, never directly from `process.env`
+- **Database queries** — Use Drizzle ORM; avoid raw SQL except in migrations
+- **Queue keys** — Use key builders in `common/redis/keys.ts` rather than hand-written strings
+- **Logging** — Use `console.log()` for now; structured logging is a future enhancement
+
+## Common Development Tasks
+
+### Adding a new HTTP endpoint
+
+1. Create a route file in `src/modules/<feature>/<feature>.routes.ts`
+2. Define a DTO in `src/modules/<feature>/dto/`
+3. Implement the handler in `src/modules/<feature>/<feature>.controllers.ts`
+4. Register the route in `src/app.ts`
+
+### Adding a new WebSocket event
+
+1. Define the event type and payload in `src/modules/<feature>/<feature>.gateway.ts`
+2. Emit from the server using `socket.emit('<EVENT_NAME>', payload)`
+3. Update the [WebSocket Events](#-websocket-events) section of this README
+
+### Running a database migration
+
+```bash
+# After modifying schema in src/common/db/schema.ts
+npx drizzle-kit generate
+
+# Review the generated SQL in drizzle/
+npx drizzle-kit migrate
+
+# View the data
+npm run db:studio
+```
+
+### Checking TypeScript errors
+
+```bash
+npx tsc --noEmit
+```
+
 ## Roadmap
 
 - Wire the chat WebSocket gateway (`SEND_MESSAGE`, typing, leave-room) to the already-built service layer
