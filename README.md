@@ -1,65 +1,121 @@
 # Unsaid
 
-> *The wound that ages, aches deeper.*
-> *The fruit that ripens, tastes sweeter.*
-> *The pickle that marinates, hits different.*
->
+> *The wound that ages, aches deeper.*  
+> *The fruit that ripens, tastes sweeter.*  
+> *The pickle that marinates, hits different.*  
+>  
 > *Some things need time to become what they were always meant to be.*
 
-Unsaid is a work-in-progress mobile and backend application for connecting people through shared moods. A phone-verified account provides accountability behind the scenes, while a chosen username keeps the first conversation comfortably pseudonymous.
+---
 
-## Project Status
+**Unsaid** is a pseudonymous mood-matching social platform that connects people through authentic conversations. Phone-verified accounts ensure accountability, while chosen usernames keep early interactions comfortably private.
 
-The backend foundation is in place, and chat is partway built:
+**Status:** 🚧 Work in Progress — Backend foundation complete, chat layer in development, mobile scaffold ready.
 
-- Phone OTP authentication with Twilio or local stub mode
-- JWT access and refresh tokens with server-side refresh-session rotation
-- Authenticated profile read and partial update endpoints
-- Authenticated WebSocket connections
-- Exact-mood FIFO matching through Valkey queues
-- Block-based matching exclusion and ban denylist checks (verified during matching)
-- PostgreSQL persistence through Drizzle ORM
-- Zod DTO validation and centralized API error handling
-- Chat message persistence and room-history/end-room logic (`chat.service.ts`)
-- AI moderation call against an OpenAI-compatible endpoint, with a fail-open policy on provider failure (`modules/ai/moderation.ts`)
+---
 
-Not yet wired up: the chat WebSocket gateway (`SEND_MESSAGE`, typing, leave-room events), icebreaker generation, and the moderation module's report/block/ban gateway. All are pseudocoded in the backend build plan and are the immediate next work.
+## 📋 Table of Contents
 
-The Expo mobile app is currently a minimal scaffold. Image uploads and the mobile product flows are planned but not implemented yet.
+- [Features](#-features)
+- [Tech Stack](#-tech-stack)
+- [Project Structure](#-project-structure)
+- [Getting Started](#-getting-started)
+- [API Reference](#-api-reference)
+- [WebSocket Events](#-websocket-events)
+- [Architecture](#-architecture)
+- [Contributing](#-contributing)
+- [License](#-license)
 
-## Repository Structure
+---
 
-```text
-.
+## ✨ Features
+
+### ✅ Implemented
+
+- **Authentication** — Phone OTP verification (Twilio or local stub mode), JWT tokens with refresh rotation
+- **User Profiles** — Phone-verified accounts with customizable username, avatar, and bio
+- **Matching** — Exact-mood FIFO queuing via Valkey with block/ban exclusions
+- **Persistence** — PostgreSQL via Drizzle ORM with automated migrations
+- **WebSocket** — Real-time authenticated connections with queue positioning
+- **Validation** — Zod DTOs with centralized error handling
+- **Moderation** — AI-powered content screening (OpenAI-compatible, fail-open design)
+- **Chat Rooms** — Message persistence with room lifecycle management
+
+### 🛠️ In Development
+
+- Chat WebSocket gateway (`SEND_MESSAGE`, typing, leave-room events)
+- Icebreaker generation and silence timer
+- Moderation gateway (report, block, ban enforcement)
+
+### 📅 Planned
+
+- Image uploads and saved chat history
+- Mobile UX (OTP, mood selection, matching, chat flows)
+- Retention and account-deletion policies
+- Advanced matching beyond exact-mood FIFO
+- Multi-instance WebSocket deployment
+
+---
+
+## 🏗️ Project Structure
+
+```
+unsaid/
 ├── apps/
-│   ├── mobile/                    # Expo / React Native client scaffold
+│   ├── mobile/                    # React Native / Expo app (scaffolded)
 │   │   ├── App.tsx
 │   │   ├── app.json
 │   │   └── package.json
-│   └── server/                    # Express, WebSocket, database, and matching backend
+│   │
+│   └── server/                    # Express backend, WebSocket, ORM, queue
 │       ├── src/
-│       │   ├── common/             # Config, DB, Redis, WebSocket, middleware, utilities
-│       │   └── modules/             # Auth, users, matching, chat, moderation, AI, uploads
-│       ├── drizzle/                # Generated SQL migrations
-│       ├── docker-compose.yml       # Local PostgreSQL and Valkey services
-│       └── .env.example
-├── docs/                           # Architecture decisions and backend build plan
+│       │   ├── common/            # Config, DB, Redis, auth, error handling
+│       │   │   ├── config/        # Environment & service setup
+│       │   │   ├── db/            # Drizzle ORM schema & queries
+│       │   │   ├── redis/         # Valkey client & queue keys
+│       │   │   ├── ws/            # WebSocket server & handlers
+│       │   │   └── middlewares/   # Auth, validation, error handling
+│       │   │
+│       │   └── modules/           # Feature domains
+│       │       ├── auth/          # OTP, JWT, session management
+│       │       ├── users/         # Profile endpoints
+│       │       ├── matching/      # Queue logic, pairing algorithm
+│       │       ├── chat/          # Messages, rooms, persistence
+│       │       ├── moderation/    # Report, block, ban workflows
+│       │       ├── ai/            # AI content screening
+│       │       └── upload/        # File handling (planned)
+│       │
+│       ├── drizzle/               # SQL migrations & snapshots
+│       ├── docker-compose.yml     # Local Postgres + Valkey
+│       ├── app.ts                 # Express setup
+│       ├── server.ts              # Server startup
+│       └── package.json
+│
+├── docs/
+│   ├── backend-build-plan.md      # Feature roadmap & implementation notes
+│   └── adr/                       # Architecture decision records
+│       ├── 0001-database-selection.md
+│       ├── 0002-authentication-strategy.md
+│       ├── 0003-realtime-matching-architecture.md
+│       └── 0004-ai-provider-strategy.md
+│
 └── README.md
 ```
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-| Area | Technology |
+| Layer | Technology |
 | --- | --- |
-| Mobile | React Native, Expo SDK 57 |
-| API | Node.js, Express 5, TypeScript |
-| Realtime | WebSocket via `ws` |
-| Database | PostgreSQL 17 |
-| ORM and migrations | Drizzle ORM and Drizzle Kit |
-| Ephemeral state | Valkey 8, Redis-compatible |
-| Validation | Zod |
-| Phone OTP | Twilio with local stub mode |
-| AI client | OpenAI-compatible client (NVIDIA NIM by default), wired for moderation; icebreaker generation not yet implemented |
+| **Mobile** | React Native, Expo SDK 57 |
+| **Backend** | Node.js 20+, Express 5, TypeScript |
+| **Real-time** | WebSocket (`ws` library) |
+| **Database** | PostgreSQL 17 (system of record) |
+| **ORM** | Drizzle ORM + Drizzle Kit (migrations) |
+| **Cache/Queue** | Valkey 8 (Redis-compatible, transient state) |
+| **Validation** | Zod schema validation |
+| **Authentication** | Phone OTP (Twilio or local stub), JWT tokens |
+| **AI/Moderation** | OpenAI-compatible API (NVIDIA NIM by default) |
+| **Dev tools** | Docker Compose, npm workspaces |
 
 ## Prerequisites
 
