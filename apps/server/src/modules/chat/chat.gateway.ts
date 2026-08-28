@@ -12,6 +12,7 @@ import { rooms } from "./chat.schema.js";
 import { eq } from "drizzle-orm";
 import ApiError from "../../common/utils/api-error.js";
 import SendMessageDto, { type SendMessageInput } from "./dto/SendMessageDto.js";
+import { recordActivity, clearRoomTimer } from "./icebreaker-timer.js";
 
 export const lookupPartnerId = async (
   roomId: string,
@@ -72,6 +73,8 @@ export const registerChatHandlers = () => {
         moderation.flagged,
       );
 
+      recordActivity(validated.roomId);
+
       if (moderation.flagged && moderation.category === "self_harm") {
         ws.send(JSON.stringify({ type: "SUPPORT_RESOURCE" }));
       }
@@ -116,6 +119,7 @@ export const registerChatHandlers = () => {
     async (ws: AuthenticatedWebSocket, msg: any) => {
       const partnerId = await lookupPartnerId(msg.roomId, ws.userId);
       await endRoom(msg.roomId);
+      clearRoomTimer(msg.roomId);
       if (partnerId) {
         const partnerSocket = getSocket(partnerId);
         if (partnerSocket) {
