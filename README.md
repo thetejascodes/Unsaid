@@ -44,7 +44,7 @@
 ### 🛠️ In Development
 
 - Chat WebSocket gateway (`SEND_MESSAGE`, typing, leave-room events)
-- Icebreaker generation and silence timer
+- Silence timer (icebreaker generation implemented)
 - Moderation gateway (report, block, ban enforcement)
 
 ### 📅 Planned
@@ -168,6 +168,7 @@ JWT_REFRESH_EXPIRES_IN=7d
 OTP_STUB_MODE=true
 NVIDIA_API_KEY=your-nvidia-nim-api-key
 MODERATION_MODEL=meta/muse-glimmer-30b
+ICEBREAKER_MODEL=meta/muse-glimmer-30b
 AI_BASE_URL=https://integrate.api.nvidia.com/v1
 ```
 
@@ -265,7 +266,7 @@ ws://localhost:8000/ws?accessToken=<ACCESS_TOKEN>
 | `ERROR` | `message` | Implemented |
 | `MESSAGE` | `message` | Planned |
 | `SUPPORT_RESOURCE` | `message` | Planned — surfaced when moderation flags a message as a self-harm concern |
-| `ICEBREAKER` | `suggestion` | Planned |
+| `ICEBREAKER` | `suggestion` | Implemented (service layer ready, gateway pending) |
 | `PARTNER_TYPING` / `PARTNER_STOP_TYPING` | None | Planned |
 | `PARTNER_LEFT` | None | Planned |
 | `REPORT_RECEIVED` | None | Planned |
