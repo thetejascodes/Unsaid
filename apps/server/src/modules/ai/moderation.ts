@@ -1,14 +1,14 @@
 import OpenAI from "openai";
 import config from "../../common/config/index.js";
 
-const client = new OpenAI({
+export const aiClient = new OpenAI({
   apiKey: config.ai.apiKey,
   baseURL: config.ai.baseUrl,
 });
 
 export const checkModeration = async (content: string) => {
   try {
-    const completion = await client.chat.completions.create({
+    const completion = await aiClient.chat.completions.create({
       model: config.ai.moderationModel,
       messages: [
         {
