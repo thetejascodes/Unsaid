@@ -29,7 +29,6 @@ const config = {
     apiKeySid: optional("TWILIO_API_KEY_SID", ""),
     apiKeySecret: optional("TWILIO_API_KEY_SECRET", ""),
     fromNumber: optional("TWILIO_FROM_NUMBER", ""),
-    toNumber: optional("TWILIO_TO_NUMBER", ""),
   },
   otpStubMode: optional("OTP_STUB_MODE", "true"),
   ai: {
@@ -39,4 +38,5 @@ const config = {
     baseUrl: optional("AI_BASE_URL", "https://openrouter.ai/api/v1"),
   },
 };
+
 export default config;
