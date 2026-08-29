@@ -1,9 +1,7 @@
-import { aiClient } from "./moderation.js";
+import { aiClient } from "../../common/ai/client.js";
 import config from "../../common/config/index.js";
 
-export const generateIcebreaker = async (context: {
-  mood: string;
-}) => {
+export const generateIcebreaker = async (context: { mood: string }) => {
   try {
     const completion = await aiClient.chat.completions.create({
       model: config.ai.icebreakerModel,

@@ -1,10 +1,5 @@
-import OpenAI from "openai";
+import { aiClient } from "../../common/ai/client.js";
 import config from "../../common/config/index.js";
-
-export const aiClient = new OpenAI({
-  apiKey: config.ai.apiKey,
-  baseURL: config.ai.baseUrl,
-});
 
 export const checkModeration = async (content: string) => {
   try {
