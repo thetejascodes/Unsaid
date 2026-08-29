@@ -24,7 +24,12 @@ export const checkModeration = async (content: string) => {
     if (!textOutput) {
       return { flagged: false, category: null };
     }
-    const parsed = JSON.parse(textOutput);
+    const cleanedOutput = textOutput
+      .trim()
+      .replace(/^```(json)?\n?/, "")
+      .replace(/```$/, "")
+      .trim();
+    const parsed = JSON.parse(cleanedOutput);
     return parsed;
   } catch (error) {
     console.error("Moderation check failed:", error);
