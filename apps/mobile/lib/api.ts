@@ -4,11 +4,14 @@ import {
   getRefreshToken,
 } from "./auth-storage";
 
-const BASE_URL = process.env.BASE_URL || "http://localhost:8000";
+const BASE_URL = process.env.EXPO_PUBLIC_BASE_URL || "http://localhost:8000";
 let currentAccessToken: string = "";
+
 export const setAccessToken = (token: string) => {
   return (currentAccessToken = token);
 };
+
+export const getAccessToken = () => currentAccessToken;
 
 export const apiFetch = async (path: string, options: RequestInit = {}) => {
   const response = await fetch(BASE_URL + path, {
