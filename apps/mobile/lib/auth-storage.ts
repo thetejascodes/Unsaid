@@ -5,7 +5,7 @@ export const saveRefreshToken = async(token:string)=>{
 
 }
 export const getRefreshToken = async()=>{
-    await SecureStore.getItemAsync('refreshToken');
+    return await SecureStore.getItemAsync('refreshToken');
 }
 
 export const clearRefreshToken = async()=>{
