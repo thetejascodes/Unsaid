@@ -3,8 +3,13 @@
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
+    "@expo-google-fonts/fraunces": "^0.4.1",
+    "@expo-google-fonts/ibm-plex-sans": "^0.4.1",
+    "@expo-google-fonts/manrope": "^0.4.2",
     "expo": "~57.0.14",
     "expo-constants": "~57.0.16",
+    "expo-font": "~57.0.2",
+    "expo-linear-gradient": "~57.0.1",
     "expo-linking": "~57.0.8",
     "expo-router": "~57.0.17",
     "expo-secure-store": "~57.0.2",

@@ -1,6 +1,9 @@
 import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
+import { View } from "react-native";
 import { AuthProvider, useAuth } from "../lib/auth-context";
+import { useAppFonts } from "./fonts";
+import { colors } from "../lib/theme";
 
 function AuthGate() {
   const { user, isLoading } = useAuth();
@@ -20,13 +23,19 @@ function AuthGate() {
   }, [user, isLoading, segments]);
 
   if (isLoading) {
-    return null;
+    return <View style={{ flex: 1, backgroundColor: colors.duskDeep }} />;
   }
 
   return <Slot />;
 }
 
 export default function RootLayout() {
+  const [fontsLoaded] = useAppFonts();
+
+  if (!fontsLoaded) {
+    return <View style={{ flex: 1, backgroundColor: colors.duskDeep }} />;
+  }
+
   return (
     <AuthProvider>
       <AuthGate />
