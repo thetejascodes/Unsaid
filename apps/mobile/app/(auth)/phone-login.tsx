@@ -1,4 +1,3 @@
-// app/(auth)/phone-login.tsx
 import { useRouter } from "expo-router";
 import { useState } from "react";
 import { View, TextInput, Text, TouchableOpacity, KeyboardAvoidingView, Platform, ActivityIndicator } from "react-native";
