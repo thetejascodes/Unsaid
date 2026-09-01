@@ -59,6 +59,7 @@
 - **Activity Tracking** — Record user activity to manage silence timers
 - **Typing Indicators** — Real-time typing status broadcasts
 - **Report & Block UI** — Users can report/block partners directly from chat
+- **Icebreaker Generation** — Conversation starter generation when silence detected with automatic timer management
 
 #### Mobile Chat Interface
 - **Chat Screen** — Full message history view with real-time updates
@@ -77,7 +78,6 @@
 
 ### 🛠️ In Development
 
-- **Icebreaker Generation** — Conversation starter generation when silence detected (implemented, timer integration pending)
 - **Enhanced Moderation Events** — Admin tools for reporting workflow
 
 ### 📅 Planned
