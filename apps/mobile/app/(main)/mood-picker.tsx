@@ -1,25 +1,42 @@
-import { useEffect, useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Alert } from 'react-native';
-import { useRouter } from 'expo-router';
-import { connectSocket, sendEvent } from '../../lib/ws-client';
-import { useAuth } from '../../lib/auth-context';
-import { getAccessToken } from '../../lib/api';
-import { colors, typography, spacing, radii } from '../../lib/theme';
-import { DuskBackground } from '../../components/DuskBackground';
+import { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  Pressable,
+  Alert,
+} from "react-native";
+import { useRouter } from "expo-router";
+import { connectSocket, sendEvent } from "../../lib/ws-client";
+import { useAuth } from "../../lib/auth-context";
+import { getAccessToken } from "../../lib/api";
+import { colors, typography, spacing, radii } from "../../lib/theme";
+import { DuskBackground } from "../../components/DuskBackground";
 
-type Status = 'idle' | 'queued' | 'matched';
+type Status = "idle" | "queued" | "matched";
 
-const MOODS = ['Happy', 'Sad', 'Anxious', 'Angry', 'Peaceful'];
-const INTERESTS = ['Music', 'Art', 'Sports', 'Gaming', 'Reading', 'Cooking'];
+const MOODS = [
+  { value: "lonely", label: "Lonely", emoji: "🌙" },
+  { value: "heartbroken", label: "Heartbroken", emoji: "💔" },
+  { value: "anxious", label: "Anxious", emoji: "🌀" },
+  { value: "overwhelmed", label: "Overwhelmed", emoji: "🌊" },
+  { value: "just_venting", label: "Just venting", emoji: "💭" },
+  { value: "need_advice", label: "Need advice", emoji: "🕯️" },
+  { value: "bored", label: "Bored", emoji: "☁️" },
+  { value: "okay", label: "Just okay", emoji: "🍃" },
+];
+
+const INTERESTS = ["Music", "Art", "Sports", "Gaming", "Reading", "Cooking"];
 
 export default function MoodPicker() {
   const router = useRouter();
   const { logout } = useAuth();
-  
+
   const [selectedMood, setSelectedMood] = useState<string | null>(null);
   const [selectedInterests, setSelectedInterests] = useState<string[]>([]);
   const [ws, setWs] = useState<WebSocket | null>(null);
-  const [status, setStatus] = useState<Status>('idle');
+  const [status, setStatus] = useState<Status>("idle");
 
   useEffect(() => {
     const accessToken = getAccessToken();
@@ -33,15 +50,15 @@ export default function MoodPicker() {
     };
   }, []);
 
-  const handleSocketMessage = (event: any) => {
+  const handleSocketMessage = async (event: any) => {
     switch (event.type) {
-      case 'QUEUED':
-        setStatus('queued');
+      case "QUEUED":
+        setStatus("queued");
         break;
-      case 'MATCHED':
-        setStatus('matched');
+      case "MATCHED":
+        setStatus("matched");
         router.push({
-          pathname: '/chat/[roomId]',
+          pathname: "/chat/[roomId]",
           params: {
             roomId: event.roomId,
             partnerId: event.partnerId,
@@ -49,13 +66,16 @@ export default function MoodPicker() {
           },
         });
         break;
-      case 'SESSION_REVOKED':
-        Alert.alert('Session Revoked', 'Your session has been revoked. Please log in again.');
-        logout();
-        router.replace('/phone-login');
+      case "SESSION_REVOKED":
+        Alert.alert(
+          "Session Revoked",
+          "Your session has been revoked. Please log in again.",
+        );
+        await logout();
+        router.replace("/phone-login");
         break;
-      case 'ERROR':
-        Alert.alert('Error', event.message || 'An error occurred');
+      case "ERROR":
+        Alert.alert("Error", event.message || "An error occurred");
         break;
       default:
         break;
@@ -64,16 +84,16 @@ export default function MoodPicker() {
 
   const handleJoinQueue = () => {
     if (!selectedMood) {
-      Alert.alert('Please select a mood');
+      Alert.alert("Please select a mood");
       return;
     }
     if (ws && ws.readyState === WebSocket.OPEN) {
-      sendEvent(ws, 'JOIN_QUEUE', {
+      sendEvent(ws, "JOIN_QUEUE", {
         mood: selectedMood,
         interests: selectedInterests,
       });
     } else {
-      Alert.alert('Connection Error', 'WebSocket is not connected');
+      Alert.alert("Connection Error", "WebSocket is not connected");
     }
   };
 
@@ -81,13 +101,16 @@ export default function MoodPicker() {
     setSelectedInterests((prev) =>
       prev.includes(interest)
         ? prev.filter((i) => i !== interest)
-        : [...prev, interest]
+        : [...prev, interest],
     );
   };
 
   return (
     <DuskBackground>
-      <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <ScrollView
+        style={styles.container}
+        contentContainerStyle={styles.content}
+      >
         <Text style={styles.title}>How are you feeling?</Text>
 
         <View style={styles.section}>
@@ -95,20 +118,20 @@ export default function MoodPicker() {
           <View style={styles.moodGrid}>
             {MOODS.map((mood) => (
               <Pressable
-                key={mood}
+                key={mood.value}
                 style={[
                   styles.moodButton,
-                  selectedMood === mood && styles.moodButtonActive,
+                  selectedMood === mood.value && styles.moodButtonActive,
                 ]}
-                onPress={() => setSelectedMood(mood)}
+                onPress={() => setSelectedMood(mood.value)}
               >
                 <Text
                   style={[
                     styles.moodButtonText,
-                    selectedMood === mood && styles.moodButtonTextActive,
+                    selectedMood === mood.value && styles.moodButtonTextActive,
                   ]}
                 >
-                  {mood}
+                  {mood.emoji} {mood.label}
                 </Text>
               </Pressable>
             ))}
@@ -123,14 +146,16 @@ export default function MoodPicker() {
                 key={interest}
                 style={[
                   styles.interestTag,
-                  selectedInterests.includes(interest) && styles.interestTagActive,
+                  selectedInterests.includes(interest) &&
+                    styles.interestTagActive,
                 ]}
                 onPress={() => toggleInterest(interest)}
               >
                 <Text
                   style={[
                     styles.interestTagText,
-                    selectedInterests.includes(interest) && styles.interestTagTextActive,
+                    selectedInterests.includes(interest) &&
+                      styles.interestTagTextActive,
                   ]}
                 >
                   {interest}
@@ -141,18 +166,21 @@ export default function MoodPicker() {
         </View>
 
         {/* Status Text */}
-        {status === 'queued' && (
+        {status === "queued" && (
           <Text style={styles.statusText}>Waiting for a match...</Text>
         )}
 
         {/* Find Match Button */}
         <Pressable
-          style={[styles.findButton, status === 'queued' && styles.findButtonDisabled]}
+          style={[
+            styles.findButton,
+            status === "queued" && styles.findButtonDisabled,
+          ]}
           onPress={handleJoinQueue}
-          disabled={status === 'queued'}
+          disabled={status === "queued"}
         >
           <Text style={styles.findButtonText}>
-            {status === 'queued' ? 'Searching...' : 'Find a Match'}
+            {status === "queued" ? "Searching..." : "Find a Match"}
           </Text>
         </Pressable>
       </ScrollView>
@@ -171,7 +199,7 @@ const styles = StyleSheet.create({
   title: {
     ...typography.headline,
     marginBottom: spacing.xl,
-    textAlign: 'center',
+    textAlign: "center",
   },
   section: {
     marginBottom: spacing.xl,
@@ -179,13 +207,13 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...typography.body,
     marginBottom: spacing.md,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   moodGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.md,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   moodButton: {
     paddingHorizontal: spacing.md,
@@ -193,9 +221,9 @@ const styles = StyleSheet.create({
     borderRadius: radii.lg,
     borderWidth: 2,
     borderColor: colors.fog,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
     minWidth: 90,
-    alignItems: 'center',
+    alignItems: "center",
   },
   moodButtonActive: {
     borderColor: colors.horizon,
@@ -207,11 +235,11 @@ const styles = StyleSheet.create({
   },
   moodButtonTextActive: {
     color: colors.duskDeep,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   interestsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: spacing.sm,
   },
   interestTag: {
@@ -220,7 +248,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.tide,
-    backgroundColor: 'transparent',
+    backgroundColor: "transparent",
   },
   interestTagActive: {
     borderColor: colors.tide,
@@ -232,19 +260,19 @@ const styles = StyleSheet.create({
   },
   interestTagTextActive: {
     color: colors.duskDeep,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   statusText: {
     ...typography.body,
     color: colors.horizon,
-    textAlign: 'center',
+    textAlign: "center",
     marginVertical: spacing.lg,
   },
   findButton: {
     paddingVertical: spacing.md,
     borderRadius: radii.lg,
     backgroundColor: colors.horizon,
-    alignItems: 'center',
+    alignItems: "center",
     marginTop: spacing.xl,
   },
   findButtonDisabled: {
@@ -253,6 +281,6 @@ const styles = StyleSheet.create({
   findButtonText: {
     ...typography.body,
     color: colors.duskDeep,
-    fontWeight: '700',
+    fontWeight: "700",
   },
 });
