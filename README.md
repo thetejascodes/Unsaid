@@ -10,7 +10,7 @@
 
 **Unsaid** is a pseudonymous mood-matching social platform that connects people through authentic conversations. Phone-verified accounts ensure accountability, while chosen usernames keep early interactions comfortably private.
 
-**Status:** 🚧 Work in Progress — Backend foundation complete, chat layer in development, mobile app screens in development (mood selection implemented).
+**Status:** 🚧 Work in Progress — Backend foundation complete, chat layer complete, mobile app screens in development (authentication & mood selection & chat room implemented).
 
 ---
 
@@ -57,6 +57,16 @@
 - **Message Persistence** — All messages stored with timestamps and user attribution
 - **Real-time Messaging** — Validated message sending via WebSocket with moderation checks
 - **Activity Tracking** — Record user activity to manage silence timers
+- **Typing Indicators** — Real-time typing status broadcasts
+- **Report & Block UI** — Users can report/block partners directly from chat
+
+#### Mobile Chat Interface
+- **Chat Screen** — Full message history view with real-time updates
+- **Message Bubbles** — Self/partner/system message differentiation
+- **Typing Indicator** — Visual feedback when partner is typing
+- **Text Input** — Multi-line input with send button
+- **Actions** — Report and block buttons for user safety
+- **Room Status** — Visual indicators for partner left/session revoked states
 
 #### Moderation & Safety
 - **AI Content Screening** — OpenAI-compatible API integration (NVIDIA NIM by default)
@@ -67,10 +77,7 @@
 
 ### 🛠️ In Development
 
-- **Mobile Chat Screen** — Chat interface for matched conversations (service layer implemented, gateway integration pending)
-- **Mobile Mood Picker** — Mood selection with interest tagging (✅ implemented)
 - **Icebreaker Generation** — Conversation starter generation when silence detected (implemented, timer integration pending)
-- **Typing Indicators** — Real-time typing status broadcasts
 - **Enhanced Moderation Events** — Admin tools for reporting workflow
 
 ### 📅 Planned
@@ -92,7 +99,9 @@ unsaid/
 │   ├── mobile/                    # React Native / Expo app (in development)
 │   │   ├── app/
 │   │   │   ├── (auth)/            # Authentication screens (phone-login, otp-verify)
-│   │   │   ├── (main)/            # Main app screens (mood-picker)
+│   │   │   ├── (main)/            # Main app screens (mood-picker, chat)
+│   │   │   │   ├── mood-picker.tsx       # Mood selection & matching interface
+│   │   │   │   └── chat/[roomId].tsx     # Chat room with messaging & moderation
 │   │   │   ├── _layout.tsx        # Root layout
 │   │   │   └── fonts.ts           # Font configuration
 │   │   ├── components/
@@ -259,7 +268,7 @@ The mobile app flow:
 1. Phone login screen — Request OTP
 2. OTP verification — Verify and create session
 3. Mood picker — Select mood and interests, join matching queue
-4. Chat interface — Send/receive messages with matched partner
+4. Chat interface — Send/receive messages with matched partner, report/block functionality
 
 ## API Reference
 
