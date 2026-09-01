@@ -10,7 +10,7 @@
 
 **Unsaid** is a pseudonymous mood-matching social platform that connects people through authentic conversations. Phone-verified accounts ensure accountability, while chosen usernames keep early interactions comfortably private.
 
-**Status:** 🚧 Work in Progress — Backend foundation complete, chat layer in development, mobile scaffold ready.
+**Status:** 🚧 Work in Progress — Backend foundation complete, chat layer in development, mobile app screens in development (mood selection implemented).
 
 ---
 
@@ -67,6 +67,8 @@
 
 ### 🛠️ In Development
 
+- **Mobile Chat Screen** — Chat interface for matched conversations (service layer implemented, gateway integration pending)
+- **Mobile Mood Picker** — Mood selection with interest tagging (✅ implemented)
 - **Icebreaker Generation** — Conversation starter generation when silence detected (implemented, timer integration pending)
 - **Typing Indicators** — Real-time typing status broadcasts
 - **Enhanced Moderation Events** — Admin tools for reporting workflow
@@ -87,10 +89,24 @@
 ```
 unsaid/
 ├── apps/
-│   ├── mobile/                    # React Native / Expo app (scaffolded)
-│   │   ├── App.tsx
-│   │   ├── app.json
-│   │   └── package.json
+│   ├── mobile/                    # React Native / Expo app (in development)
+│   │   ├── app/
+│   │   │   ├── (auth)/            # Authentication screens (phone-login, otp-verify)
+│   │   │   ├── (main)/            # Main app screens (mood-picker)
+│   │   │   ├── _layout.tsx        # Root layout
+│   │   │   └── fonts.ts           # Font configuration
+│   │   ├── components/
+│   │   │   └── DuskBackground.tsx # Gradient background component
+│   │   ├── lib/
+│   │   │   ├── api.ts             # HTTP client with token management
+│   │   │   ├── auth-context.tsx   # Auth state management
+│   │   │   ├── auth-storage.ts    # Secure token storage
+│   │   │   ├── ws-client.ts       # WebSocket connection helpers
+│   │   │   └── theme.ts           # Design tokens (colors, typography, spacing)
+│   │   ├── assets/
+│   │   ├── app.json               # Expo configuration
+│   │   ├── package.json
+│   │   └── tsconfig.json
 │   │
 │   └── server/                    # Express backend, WebSocket, ORM, queue
 │       ├── src/
@@ -228,7 +244,7 @@ The backend listens at `http://localhost:8000` by default. Verify it with:
 GET http://localhost:8000/health
 ```
 
-### 6. Run the mobile scaffold
+### 6. Run the mobile app
 
 In another terminal:
 
@@ -238,6 +254,12 @@ npm start
 ```
 
 Use Expo Go, an Android emulator, an iOS simulator, or the web target.
+
+The mobile app flow:
+1. Phone login screen — Request OTP
+2. OTP verification — Verify and create session
+3. Mood picker — Select mood and interests, join matching queue
+4. Chat interface — Send/receive messages with matched partner
 
 ## API Reference
 
@@ -1057,15 +1079,15 @@ npx tsc --noEmit
 - [ ] Add `SUPPORT_RESOURCE` event for crisis detection
 - [ ] Build admin reporting dashboard (future)
 
-### Phase 4: Mobile App (Planned)
+### Phase 4: Mobile App (In Progress)
 
-- [ ] Scaffold React Native screens:
-  - Phone number input
-  - OTP verification
-  - Mood selection
-  - Matching queue status
-  - Chat interface
-- [ ] Integrate with backend WebSocket API
+- [x] Scaffold React Native project with Expo
+- [x] Phone number input screen
+- [x] OTP verification screen
+- [x] Mood selection screen with interest tagging
+- [ ] Matching queue status display
+- [ ] Chat interface screen (service layer ready, gateway integration pending)
+- [ ] Implement typing indicators
 - [ ] Add push notifications (optional)
 - [ ] Implement avatar upload from device
 
@@ -1087,6 +1109,15 @@ npx tsc --noEmit
 - [ ] Read receipts and delivery status
 - [ ] End-to-end encryption (E2EE) for messages
 - [ ] Web app companion (browser-based chat)
+
+## Contributing
+
+The project follows TypeScript strict mode and the development conventions outlined in this README. Before starting a new feature:
+
+1. Check the [Roadmap & Next Steps](#-roadmap--next-steps) section
+2. Review the [Architecture Decisions](docs/adr/) directory
+3. Follow the [Development Conventions](#-development-conventions) section
+4. Test manually against live infrastructure (Docker Postgres/Valkey)
 
 ## License
 
