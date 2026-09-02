@@ -76,12 +76,25 @@ export const registerChatHandlers = () => {
       recordActivity(validated.roomId);
 
       if (moderation.flagged && moderation.category === "self_harm") {
-        ws.send(JSON.stringify({ type: "SUPPORT_RESOURCE" }));
+        ws.send(
+          JSON.stringify({
+            type: "SUPPORT_RESOURCE",
+            content:
+              "It sounds like you're carrying a lot right now. If you're in crisis, please reach out to a crisis line in your area — you don't have to sit with this alone.",
+          }),
+        );
       }
 
       if (partnerId) {
         const partnerSocket = getSocket(partnerId);
-          console.log("DEBUG partnerId:", partnerId, "socket found:", !!partnerSocket, "readyState:", partnerSocket?.readyState);
+        console.log(
+          "DEBUG partnerId:",
+          partnerId,
+          "socket found:",
+          !!partnerSocket,
+          "readyState:",
+          partnerSocket?.readyState,
+        );
         if (partnerSocket) {
           partnerSocket.send(JSON.stringify({ type: "MESSAGE", message }));
         }
