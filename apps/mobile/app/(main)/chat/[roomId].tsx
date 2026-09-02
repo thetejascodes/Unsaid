@@ -70,19 +70,18 @@ export default function ChatRoom() {
   const handleSocketMessage = async (event: any) => {
     switch (event.type) {
       case "MESSAGE": {
-        // TEMP DEBUG — remove once the one-directional delivery bug is found
-        console.log("RAW MESSAGE EVENT:", JSON.stringify(event));
         // Backend sends { type: "MESSAGE", message: {...} } — content is
-        // nested inside `message`, not directly on the event. Fall back to
-        // reading flat fields too, in case any event ever sends it that way.
+        // nested inside `message`, not directly on the event.
         const incoming = event.message ?? event;
         addMessage({
-          id: incoming.id || incoming.messageId || String(Date.now()),
+          id: incoming.id || String(Date.now()),
           content: incoming.content,
           sender: "partner",
           type: "text",
-          timestamp: incoming.createdAt || incoming.timestamp || Date.now(),
-          messageId: incoming.id || incoming.messageId,
+          timestamp: incoming.sentAt
+            ? new Date(incoming.sentAt).getTime()
+            : Date.now(),
+          messageId: incoming.id,
         });
         break;
       }
@@ -107,29 +106,32 @@ export default function ChatRoom() {
         break;
 
       case "ICEBREAKER":
-          console.log("RAW ICEBREAKER EVENT:", JSON.stringify(event));
+        // Backend sends { type: "ICEBREAKER", suggestion: "..." } — flat,
+        // under `suggestion`, not `content`.
         addMessage({
-          id: event.messageId || String(Date.now()),
+          id: String(Date.now()),
           content: event.suggestion,
           sender: "system",
           type: "icebreaker",
-          timestamp: event.timestamp || Date.now(),
-          messageId: event.messageId,
+          timestamp: Date.now(),
         });
         break;
 
       case "SUPPORT_RESOURCE":
-        Alert.alert("Support Resource", event.content, [
+        Alert.alert("You're not alone", event.content, [
           { text: "OK", onPress: () => {} },
         ]);
         addMessage({
-          id: event.messageId || String(Date.now()),
+          id: String(Date.now()),
           content: event.content,
           sender: "system",
           type: "support_resource",
-          timestamp: event.timestamp || Date.now(),
-          messageId: event.messageId,
+          timestamp: Date.now(),
         });
+        break;
+
+      case "ERROR":
+        Alert.alert("Something went wrong", event.message);
         break;
 
       case "SESSION_REVOKED":
@@ -151,7 +153,6 @@ export default function ChatRoom() {
     setMessages((prev) => [...prev, message]);
   };
 
-  // Send a message
   const handleSend = () => {
     if (!inputText.trim() || !ws || roomStatus !== "connected") {
       return;
@@ -175,7 +176,6 @@ export default function ChatRoom() {
     handleStopTyping();
   };
 
-  // Handle typing
   const handleTyping = () => {
     if (!ws || roomStatus !== "connected") return;
 
@@ -190,7 +190,6 @@ export default function ChatRoom() {
     }, 3000);
   };
 
-  // Handle stop typing
   const handleStopTyping = () => {
     if (!ws || roomStatus !== "connected") return;
 
@@ -202,14 +201,14 @@ export default function ChatRoom() {
     }
   };
 
-  // Leave the room
   const handleLeave = () => {
     if (!ws) return;
 
-    Alert.alert("Leave Conversation", "Are you sure you want to leave?", [
-      { text: "Cancel", onPress: () => {} },
+    Alert.alert("Leave this conversation?", "You won't be able to return to it.", [
+      { text: "Stay", onPress: () => {} },
       {
         text: "Leave",
+        style: "destructive",
         onPress: () => {
           sendEvent(ws, "LEAVE_ROOM", { roomId });
           router.replace("/mood-picker");
@@ -218,11 +217,10 @@ export default function ChatRoom() {
     ]);
   };
 
-  // Report a message
   const handleReport = (messageId: string) => {
     Alert.prompt(
-      "Report Message",
-      "Please provide a reason for reporting this message:",
+      "Report this message",
+      "What happened?",
       [
         { text: "Cancel", onPress: () => {} },
         {
@@ -230,7 +228,7 @@ export default function ChatRoom() {
           onPress: (reason?: string) => {
             if (reason && ws) {
               sendEvent(ws, "REPORT", { roomId, messageId, reason });
-              Alert.alert("Success", "Message reported successfully.");
+              Alert.alert("Reported", "Thank you — we'll take a look.");
             }
           },
         },
@@ -239,12 +237,12 @@ export default function ChatRoom() {
     );
   };
 
-  // Block the partner
   const handleBlock = () => {
-    Alert.alert("Block User", "Are you sure you want to block this user?", [
+    Alert.alert("Block this person?", "You won't be matched with them again.", [
       { text: "Cancel", onPress: () => {} },
       {
         text: "Block",
+        style: "destructive",
         onPress: () => {
           if (ws) {
             sendEvent(ws, "BLOCK", { roomId });
@@ -255,10 +253,32 @@ export default function ChatRoom() {
     ]);
   };
 
-  // Render message item
   const renderMessage = ({ item }: { item: Message }) => {
     const isOwn = item.sender === "self";
     const isSystem = item.sender === "system";
+    const isIcebreaker = item.type === "icebreaker";
+    const isSupport = item.type === "support_resource";
+
+    if (isIcebreaker) {
+      return (
+        <View style={styles.icebreakerRow}>
+          <View style={styles.icebreakerCard}>
+            <Text style={styles.icebreakerLabel}>a way in</Text>
+            <Text style={styles.icebreakerText}>{item.content}</Text>
+          </View>
+        </View>
+      );
+    }
+
+    if (isSupport) {
+      return (
+        <View style={styles.icebreakerRow}>
+          <View style={styles.supportCard}>
+            <Text style={styles.supportText}>{item.content}</Text>
+          </View>
+        </View>
+      );
+    }
 
     return (
       <View
@@ -287,8 +307,8 @@ export default function ChatRoom() {
         </View>
 
         {isOwn && item.messageId && (
-          <Pressable onPress={() => handleReport(item.messageId!)}>
-            <Text style={styles.reportButton}>Report</Text>
+          <Pressable onPress={() => handleReport(item.messageId!)} hitSlop={8}>
+            <Text style={styles.reportButton}>report</Text>
           </Pressable>
         )}
       </View>
@@ -298,18 +318,17 @@ export default function ChatRoom() {
   return (
     <DuskBackground>
       <View style={styles.container}>
-        {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerContent}>
-            <Text style={styles.headerTitle}>Chat</Text>
-            {partnerId && (
+            <Text style={styles.headerTitle}>a quiet room</Text>
+            {partnerMood && (
               <Text style={styles.partnerInfo}>
-                Chatting with someone {partnerMood && `who is ${partnerMood}`}
+                someone feeling {partnerMood.replace("_", " ")}
               </Text>
             )}
           </View>
-          <Pressable onPress={handleLeave}>
-            <Text style={styles.headerButton}>Leave</Text>
+          <Pressable onPress={handleLeave} hitSlop={8}>
+            <Text style={styles.headerButton}>leave</Text>
           </Pressable>
         </View>
 
@@ -317,13 +336,12 @@ export default function ChatRoom() {
           <View style={styles.statusBanner}>
             <Text style={styles.statusText}>
               {roomStatus === "partner_left"
-                ? "Your partner has left"
-                : "Session revoked"}
+                ? "They've stepped away."
+                : "This session has ended."}
             </Text>
           </View>
         )}
 
-        {/* Messages List */}
         <FlatList
           ref={flatListRef}
           data={messages}
@@ -334,19 +352,16 @@ export default function ChatRoom() {
           scrollEnabled={true}
         />
 
-        {/* Typing Indicator */}
         {partnerTyping && (
           <View style={styles.typingIndicator}>
-            <Text style={styles.typingText}>Partner is typing</Text>
-            <Text style={styles.typingDots}>...</Text>
+            <Text style={styles.typingText}>they're writing</Text>
           </View>
         )}
 
-        {/* Input Area */}
         <View style={styles.inputContainer}>
           <TextInput
             style={styles.textInput}
-            placeholder="Type a message..."
+            placeholder="say what you're carrying..."
             placeholderTextColor={colors.fog}
             value={inputText}
             onChangeText={(text) => {
@@ -368,20 +383,18 @@ export default function ChatRoom() {
             ]}
             disabled={roomStatus !== "connected" || !inputText.trim()}
           >
-            <Text style={styles.sendButtonText}>Send</Text>
+            <Text style={styles.sendButtonText}>send</Text>
           </Pressable>
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionButtons}>
-          <Pressable
-            onPress={handleBlock}
-            style={styles.actionButton}
-            disabled={roomStatus !== "connected"}
-          >
-            <Text style={styles.actionButtonText}>Block</Text>
-          </Pressable>
-        </View>
+        <Pressable
+          onPress={handleBlock}
+          style={styles.blockRow}
+          disabled={roomStatus !== "connected"}
+          hitSlop={8}
+        >
+          <Text style={styles.blockText}>block this person</Text>
+        </Pressable>
       </View>
     </DuskBackground>
   );
@@ -390,57 +403,59 @@ export default function ChatRoom() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "center",
+    alignItems: "flex-end",
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.md,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.md,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 255, 255, 0.1)",
+    borderBottomColor: "rgba(245, 237, 227, 0.08)",
   },
   headerContent: {
     flex: 1,
   },
   headerTitle: {
-    fontSize: typography.headline.fontSize,
-    fontWeight: "600",
+    fontFamily: fontFamily.logo,
+    fontSize: 24,
     color: colors.paper,
   },
   partnerInfo: {
-    fontSize: 12,
+    fontFamily: fontFamily.regular,
+    fontSize: 13,
     color: colors.fog,
-    marginTop: spacing.xs,
+    marginTop: 2,
   },
   headerButton: {
-    fontSize: 12,
+    fontFamily: fontFamily.medium,
+    fontSize: 13,
     color: colors.horizon,
-    fontWeight: "600",
+    paddingBottom: 2,
   },
   statusBanner: {
-    backgroundColor: "rgba(255, 100, 100, 0.2)",
-    paddingHorizontal: spacing.md,
+    backgroundColor: "rgba(181, 85, 107, 0.15)",
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255, 100, 100, 0.3)",
   },
   statusText: {
-    color: "#ffcccc",
-    fontSize: 12,
-    fontWeight: "500",
+    fontFamily: fontFamily.regular,
+    color: colors.wine,
+    fontSize: 13,
   },
   messageList: {
     flex: 1,
   },
   messageListContent: {
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
+    gap: spacing.sm,
   },
   messageContainer: {
-    marginBottom: spacing.md,
+    marginBottom: spacing.sm,
     alignItems: "flex-start",
+    maxWidth: "100%",
   },
   ownMessageContainer: {
     alignItems: "flex-end",
@@ -449,99 +464,134 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   messageBubble: {
-    maxWidth: "80%",
+    maxWidth: "78%",
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
-    borderRadius: radii.md,
+    paddingVertical: 10,
+    backgroundColor: "rgba(245, 237, 227, 0.08)",
+    borderRadius: radii.lg,
+    borderBottomLeftRadius: 4,
   },
   ownMessageBubble: {
-    backgroundColor: colors.wine,
+    backgroundColor: colors.duskWarm,
+    borderBottomLeftRadius: radii.lg,
+    borderBottomRightRadius: 4,
   },
   systemMessageBubble: {
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    backgroundColor: "transparent",
   },
   messageText: {
+    fontFamily: fontFamily.regular,
     color: colors.paper,
-    fontSize: typography.body.fontSize,
+    fontSize: 15,
+    lineHeight: 21,
   },
   ownMessageText: {
     color: colors.paper,
   },
   systemMessageText: {
+    fontFamily: fontFamily.regular,
     color: colors.fog,
     fontSize: 12,
     fontStyle: "italic",
   },
   reportButton: {
-    color: colors.horizon,
-    fontSize: 10,
-    marginTop: spacing.xs,
+    fontFamily: fontFamily.regular,
+    color: colors.fog,
+    fontSize: 11,
+    marginTop: 3,
+    marginRight: 2,
   },
-  typingIndicator: {
-    flexDirection: "row",
+  icebreakerRow: {
     alignItems: "center",
+    marginVertical: spacing.md,
+  },
+  icebreakerCard: {
+    maxWidth: "88%",
+    borderWidth: 1,
+    borderColor: "rgba(240, 149, 78, 0.35)",
+    backgroundColor: "rgba(240, 149, 78, 0.08)",
+    borderRadius: radii.md,
     paddingHorizontal: spacing.md,
     paddingVertical: spacing.sm,
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+  },
+  icebreakerLabel: {
+    fontFamily: fontFamily.medium,
+    fontSize: 11,
+    color: colors.horizon,
+    marginBottom: 4,
+  },
+  icebreakerText: {
+    fontFamily: fontFamily.logo,
+    fontSize: 16,
+    color: colors.paper,
+    lineHeight: 22,
+  },
+  supportCard: {
+    maxWidth: "88%",
+    borderWidth: 1,
+    borderColor: "rgba(110, 156, 147, 0.4)",
+    backgroundColor: "rgba(110, 156, 147, 0.1)",
+    borderRadius: radii.md,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+  },
+  supportText: {
+    fontFamily: fontFamily.regular,
+    fontSize: 14,
+    color: colors.paper,
+    lineHeight: 20,
+  },
+  typingIndicator: {
+    paddingHorizontal: spacing.lg,
+    paddingBottom: spacing.xs,
   },
   typingText: {
+    fontFamily: fontFamily.regular,
+    fontStyle: "italic",
     color: colors.fog,
     fontSize: 12,
-  },
-  typingDots: {
-    color: colors.fog,
-    marginLeft: spacing.xs,
   },
   inputContainer: {
     flexDirection: "row",
     alignItems: "flex-end",
-    paddingHorizontal: spacing.md,
+    paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.1)",
-    backgroundColor: "rgba(255, 255, 255, 0.05)",
+    borderTopColor: "rgba(245, 237, 227, 0.08)",
+    gap: spacing.sm,
   },
   textInput: {
     flex: 1,
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    fontFamily: fontFamily.regular,
+    backgroundColor: "rgba(245, 237, 227, 0.07)",
     color: colors.paper,
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.md,
-    marginRight: spacing.sm,
+    paddingVertical: 10,
+    borderRadius: radii.lg,
     maxHeight: 100,
+    fontSize: 15,
   },
   sendButton: {
-    backgroundColor: colors.wine,
+    backgroundColor: colors.horizon,
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.md,
+    paddingVertical: 10,
+    borderRadius: radii.lg,
   },
   sendButtonDisabled: {
-    opacity: 0.5,
+    opacity: 0.35,
   },
   sendButtonText: {
-    color: colors.paper,
-    fontWeight: "600",
-    fontSize: typography.body.fontSize,
+    fontFamily: fontFamily.semibold,
+    color: colors.duskDeep,
+    fontSize: 14,
   },
-  actionButtons: {
-    flexDirection: "row",
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.md,
-    borderTopWidth: 1,
-    borderTopColor: "rgba(255, 255, 255, 0.1)",
-  },
-  actionButton: {
-    flex: 1,
-    paddingVertical: spacing.md,
-    backgroundColor: "rgba(255, 100, 100, 0.2)",
-    borderRadius: radii.md,
+  blockRow: {
     alignItems: "center",
+    paddingBottom: spacing.md,
   },
-  actionButtonText: {
-    color: "#ffcccc",
-    fontWeight: "600",
+  blockText: {
+    fontFamily: fontFamily.regular,
+    color: colors.fog,
+    fontSize: 12,
   },
 });
