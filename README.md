@@ -10,7 +10,7 @@
 
 **Unsaid** is a pseudonymous mood-matching social platform that connects people through authentic conversations. Phone-verified accounts ensure accountability, while chosen usernames keep early interactions comfortably private.
 
-**Status:** 🚧 Work in Progress — Backend foundation complete, chat layer complete, mobile app screens in development (authentication & mood selection & chat room implemented).
+**Status:** ✅ Active development — the core flow is live: phone OTP auth, mood-based matching, real-time chat, and typing indicators are all in place across the mobile app and backend.
 
 ---
 
@@ -37,57 +37,57 @@
 
 ## ✨ Features
 
-### ✅ Fully Implemented
+### ✅ Implemented
 
 #### Authentication & Accounts
-- **Phone OTP Verification** — Twilio integration with fallback to console stub mode for local dev
-- **JWT Token System** — Access tokens (15m default) + refresh tokens (7d default) with secure rotation
-- **Session Management** — Automatic session rotation on refresh, logout revocation, expired token cleanup
-- **User Profiles** — Create/update username, avatar URL, and bio after phone verification
+- **Phone OTP Verification** — Twilio integration with a console stub mode for local development
+- **JWT Token System** — Access and refresh tokens with rotation and revocation
+- **Session Management** — Login, refresh, logout, and session expiry handling
+- **User Profiles** — Username, avatar URL, and bio support after onboarding
 
 #### Real-Time Matching
-- **Mood-based Queue** — FIFO pairing by exact mood match using Valkey
-- **Interest Tagging** — Users can specify interests for future advanced matching
-- **Socket Registry** — Track active WebSocket connections per user ID
-- **Queue Management** — Join/leave queue with automatic cleanup on disconnect
-- **Block/Ban System** — Exclude previously blocked or globally banned users from matching
+- **Mood-based Queue** — Exact mood FIFO matching via Valkey
+- **Interest Tagging** — User interests are captured for the matching flow
+- **Socket Registry** — Active socket tracking by user ID
+- **Queue Management** — Join/leave queue and disconnect cleanup
+- **Block/Ban System** — Matching excludes blocked and banned users
 
 #### Chat System
-- **Room Lifecycle** — Automatic room creation on match, persistence in PostgreSQL
-- **Message Persistence** — All messages stored with timestamps and user attribution
-- **Real-time Messaging** — Validated message sending via WebSocket with moderation checks
-- **Activity Tracking** — Record user activity to manage silence timers
-- **Typing Indicators** — Real-time typing status broadcasts
-- **Report & Block UI** — Users can report/block partners directly from chat
-- **Icebreaker Generation** — Conversation starter generation when silence detected with automatic timer management
+- **Room Lifecycle** — Match creates a persistent room in PostgreSQL
+- **Message Persistence** — Messages and timestamps are stored reliably
+- **Real-time Messaging** — Send/receive through WebSocket events with validation
+- **Typing Indicators** — Real-time typing and stop-typing broadcasts between participants
+- **Activity & Silence Flow** — Basic activity state and conversation recovery hooks are integrated
+- **Report & Block Actions** — Users can report or block the active partner from chat
+- **Icebreaker Generation** — Conversation starter events can surface when the conversation stalls
 
 #### Mobile Chat Interface
-- **Chat Screen** — Full message history view with real-time updates
-- **Message Bubbles** — Self/partner/system message differentiation
-- **Typing Indicator** — Visual feedback when partner is typing
-- **Text Input** — Multi-line input with send button
-- **Actions** — Report and block buttons for user safety
-- **Room Status** — Visual indicators for partner left/session revoked states
+- **Matched Chat Screen** — Full message history and conversation state in the mobile app
+- **Self/Partner/System Bubbles** — Message rendering matches the active participant and system events
+- **Typing UI** — Partner typing state is surfaced visually while they are active
+- **Input and Send Flow** — Text input, send action, and typing debounce behavior are wired
+- **Room Actions** — Leave, block, and report actions are connected to socket events
+- **Session Handling** — Revoked sessions and partner departures are handled gracefully
 
 #### Moderation & Safety
-- **AI Content Screening** — OpenAI-compatible API integration (NVIDIA NIM by default)
-- **Report System** — Users can report messages with optional reason
-- **Block Enforcement** — Block users from your match queue
-- **Bans** — Global ban list with denylist key lookups in Valkey
-- **Fail-Open Design** — Chat continues even if AI moderation times out or fails
+- **AI Content Screening** — OpenAI-compatible moderation pipeline with fail-open behavior
+- **Report System** — Report events are supported in the chat flow
+- **Block Enforcement** — Matching and room state respect the current block graph
+- **Bans** — Global ban checks are enforced during login and queue entry
+- **Safety Fallbacks** — The app keeps the conversation alive if moderation fails instead of blocking the user
 
-### 🛠️ In Development
+### 🛠️ In Progress
 
-- **Enhanced Moderation Events** — Admin tools for reporting workflow
+- **Moderation admin workflow** — More advanced report review and moderation tooling
+- **Expanded chat cleanup and edge-case recovery** — Room close, reconnect, and state reconciliation polishing
 
 ### 📅 Planned
 
-- **File Uploads** — Avatar and image uploads in messages
-- **Chat History Export** — Download/archive conversations
-- **Account Deletion** — Permanent data purge with grace period
-- **Advanced Matching** — Compatibility scoring, time-zone pairing, topic filters
-- **Mobile App** — React Native UI for OTP → mood selection → matching → chat
-- **Multi-Instance Deployment** — Redis pub/sub for WebSocket scaling across server instances
+- **File Uploads** — Avatar and message image support
+- **Chat History Export** — Download or archive a conversation
+- **Account Deletion** — Hard-delete and grace-period workflows
+- **Advanced Matching** — Compatibility scoring, timezone-aware pairing, and richer filters
+- **Multi-Instance Deployment** — Redis Pub/Sub and horizontal WebSocket scaling
 
 ---
 
@@ -647,7 +647,7 @@ Sent when the partner leaves the room, blocks you, or is disconnected.
 
 Broadcast typing state to the partner in real time.
 
-**Status**: Planned.
+**Status**: Implemented in the mobile chat flow and active in the socket layer.
 
 ---
 
@@ -667,7 +667,7 @@ Broadcast typing state to the partner in real time.
 
 Indicates the partner is actively typing.
 
-**Status**: Planned.
+**Status**: Implemented and surfaced in the chat UI as a partner typing indicator.
 
 ---
 
@@ -1072,31 +1072,33 @@ npx tsc --noEmit
 
 ## Roadmap & Next Steps
 
-### Phase 2: Chat & Conversation (In Progress)
+### Phase 2: Chat & Conversation (Live)
 
-- [ ] Wire `SEND_MESSAGE` event to chat gateway and service layer
-- [ ] Implement typing indicators (`TYPING`, `STOP_TYPING` events)
-- [ ] Add `LEAVE_ROOM` event to close conversations explicitly
-- [ ] Implement 30-second silence timer and icebreaker generation
+- [x] Wire `SEND_MESSAGE` event to the chat gateway and service layer
+- [x] Implement typing indicators (`TYPING`, `STOP_TYPING` events)
+- [x] Add room-level actions such as leave, block, and report from the chat screen
+- [x] Surface partner state updates such as typing, left-room, and session revocations in the app UI
+- [x] Add conversation starter and support-resource event handling in the chat flow
 - [ ] Add support for message image uploads and URLs
+- [ ] Polish reconnect and message resync behavior for dropped or stale connections
 
-### Phase 3: Moderation & Safety (Planned)
+### Phase 3: Moderation & Safety (In Progress)
 
-- [ ] Wire `REPORT` event to moderation gateway
-- [ ] Wire `BLOCK` event and enforce bi-directional blocks
-- [ ] Implement message-level ban enforcement (close socket mid-conversation)
-- [ ] Add `SUPPORT_RESOURCE` event for crisis detection
+- [x] Wire `REPORT` event to the chat flow
+- [x] Wire `BLOCK` event and enforce partner-level restrictions
+- [ ] Implement stricter message-level ban enforcement during live sessions
+- [ ] Add more structured `SUPPORT_RESOURCE` handling and user guidance
 - [ ] Build admin reporting dashboard (future)
 
-### Phase 4: Mobile App (In Progress)
+### Phase 4: Mobile App (Live)
 
 - [x] Scaffold React Native project with Expo
 - [x] Phone number input screen
 - [x] OTP verification screen
 - [x] Mood selection screen with interest tagging
-- [ ] Matching queue status display
-- [ ] Chat interface screen (service layer ready, gateway integration pending)
-- [ ] Implement typing indicators
+- [x] Matching queue and room transition flow
+- [x] Chat interface screen with live message updates and typing state
+- [x] Typing indicator implementation in the mobile chat UI
 - [ ] Add push notifications (optional)
 - [ ] Implement avatar upload from device
 
