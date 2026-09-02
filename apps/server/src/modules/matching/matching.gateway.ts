@@ -16,6 +16,10 @@ export const registerMatchingHandlers = () => {
     }
     delete ws.queuedMood;
   });
+    registerMessageHandler("PING", async (ws, msg) => {
+    ws.send(JSON.stringify({ type: "PONG" }));
+  });
+
 
   onDisconnect((ws) => {
     unregisterSocket(ws.userId);
