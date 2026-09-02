@@ -2,7 +2,7 @@ import { Slot, useRouter, useSegments } from "expo-router";
 import { useEffect } from "react";
 import { View } from "react-native";
 import { AuthProvider, useAuth } from "../lib/auth-context";
-import { useAppFonts } from "./fonts";
+import { useAppFonts } from "../lib/fonts";
 import { colors } from "../lib/theme";
 
 function AuthGate() {
