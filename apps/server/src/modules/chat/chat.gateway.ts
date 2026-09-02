@@ -87,14 +87,6 @@ export const registerChatHandlers = () => {
 
       if (partnerId) {
         const partnerSocket = getSocket(partnerId);
-        console.log(
-          "DEBUG partnerId:",
-          partnerId,
-          "socket found:",
-          !!partnerSocket,
-          "readyState:",
-          partnerSocket?.readyState,
-        );
         if (partnerSocket) {
           partnerSocket.send(JSON.stringify({ type: "MESSAGE", message }));
         }
