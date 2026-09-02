@@ -51,6 +51,7 @@ export default function MoodPicker() {
   }, []);
 
   const handleSocketMessage = async (event: any) => {
+      console.log("MOOD PICKER RECEIVED:", event.type, event);
     switch (event.type) {
       case "QUEUED":
         setStatus("queued");
