@@ -2,6 +2,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import { IncomingMessage, Server } from "node:http";
 import { Socket } from "node:net";
 import { verifyAccessToken } from "../utils/jwt.utils.js";
+import { registerSocket,unregisterSocket } from "../../modules/matching/socket-registry.js";
 
 export interface AuthenticatedWebSocket extends WebSocket {
   userId: string;
@@ -95,6 +96,7 @@ export const attachWebSocketServer = (httpServer: Server) => {
       wss.handleUpgrade(req, socket, head, (ws) => {
         const authedWs = ws as AuthenticatedWebSocket;
         authedWs.userId = payload.userId;
+        registerSocket(authedWs.userId,authedWs);
         wss.emit("connection", authedWs, req);
       });
     },
@@ -107,6 +109,7 @@ export const attachWebSocketServer = (httpServer: Server) => {
     });
 
     ws.on("close", () => {
+      unregisterSocket(ws.userId);
       emitDisconnect(ws);
     });
   });

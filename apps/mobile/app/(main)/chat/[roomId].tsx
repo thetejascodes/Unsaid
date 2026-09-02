@@ -69,16 +69,23 @@ export default function ChatRoom() {
 
   const handleSocketMessage = async (event: any) => {
     switch (event.type) {
-      case "MESSAGE":
+      case "MESSAGE": {
+        // TEMP DEBUG — remove once the one-directional delivery bug is found
+        console.log("RAW MESSAGE EVENT:", JSON.stringify(event));
+        // Backend sends { type: "MESSAGE", message: {...} } — content is
+        // nested inside `message`, not directly on the event. Fall back to
+        // reading flat fields too, in case any event ever sends it that way.
+        const incoming = event.message ?? event;
         addMessage({
-          id: event.messageId || String(Date.now()),
-          content: event.content,
+          id: incoming.id || incoming.messageId || String(Date.now()),
+          content: incoming.content,
           sender: "partner",
           type: "text",
-          timestamp: event.timestamp || Date.now(),
-          messageId: event.messageId,
+          timestamp: incoming.createdAt || incoming.timestamp || Date.now(),
+          messageId: incoming.id || incoming.messageId,
         });
         break;
+      }
 
       case "PARTNER_TYPING":
         setPartnerTyping(true);
@@ -100,9 +107,10 @@ export default function ChatRoom() {
         break;
 
       case "ICEBREAKER":
+          console.log("RAW ICEBREAKER EVENT:", JSON.stringify(event));
         addMessage({
           id: event.messageId || String(Date.now()),
-          content: event.content,
+          content: event.suggestion,
           sender: "system",
           type: "icebreaker",
           timestamp: event.timestamp || Date.now(),

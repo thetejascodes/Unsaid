@@ -6,9 +6,21 @@ export const connectSocket = (
 ) => {
   const ws = new WebSocket(`${WS_BASE_URL}/ws?accessToken=${accessToken}`);
 
+  ws.onopen = () => {
+    console.log("WS OPEN:", WS_BASE_URL);
+  };
+
   ws.onmessage = (event) => {
     const parsed = JSON.parse(event.data);
     onMessage(parsed);
+  };
+
+  ws.onerror = (err) => {
+    console.log("WS ERROR:", JSON.stringify(err));
+  };
+
+  ws.onclose = (event) => {
+    console.log("WS CLOSED. code:", event.code, "reason:", event.reason);
   };
 
   return ws;

@@ -83,19 +83,20 @@ export default function MoodPicker() {
   };
 
   const handleJoinQueue = () => {
-    if (!selectedMood) {
-      Alert.alert("Please select a mood");
-      return;
-    }
-    if (ws && ws.readyState === WebSocket.OPEN) {
-      sendEvent(ws, "JOIN_QUEUE", {
-        mood: selectedMood,
-        interests: selectedInterests,
-      });
-    } else {
-      Alert.alert("Connection Error", "WebSocket is not connected");
-    }
-  };
+  console.log("JOIN QUEUE TAPPED. ws exists:", !!ws, "readyState:", ws?.readyState);
+  if (!selectedMood) {
+    Alert.alert("Please select a mood");
+    return;
+  }
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    sendEvent(ws, "JOIN_QUEUE", {
+      mood: selectedMood,
+      interests: selectedInterests,
+    });
+  } else {
+    Alert.alert("Connection Error", "WebSocket is not connected");
+  }
+};
 
   const toggleInterest = (interest: string) => {
     setSelectedInterests((prev) =>
