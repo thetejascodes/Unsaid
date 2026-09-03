@@ -1214,7 +1214,6 @@ The project follows TypeScript strict mode and the development conventions outli
 4. Test manually against live infrastructure (Docker Postgres/Valkey)
 
 ## License
-
 MIT © 2026 Unsaid
 
 *Built from a feeling that stayed too long.*
