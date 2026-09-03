@@ -45,7 +45,8 @@ export default function Profile() {
       const { data } = await response.json();
       // Reflect the change everywhere in the app immediately, not just
       // on this screen — AuthContext is what other screens read from.
-      setUser?.(data);
+      setUser(data);
+      Alert.alert("Saved", "That's you now.");
     } catch {
       setError("Couldn't save that — try again");
     } finally {
