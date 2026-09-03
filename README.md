@@ -152,7 +152,8 @@ unsaid/
 │       ├── 0001-database-selection.md
 │       ├── 0002-authentication-strategy.md
 │       ├── 0003-realtime-matching-architecture.md
-│       └── 0004-ai-provider-strategy.md
+│       ├── 0004-ai-provider-strategy.md
+│       └── 0005-websocket-connection-resilience.md
 │
 └── README.md
 ```
@@ -1002,6 +1003,7 @@ There is currently no automated test command configured in `apps/server/package.
 - [Authentication strategy](docs/adr/0002-authentication-strategy.md)
 - [Realtime matching architecture](docs/adr/0003-realtime-matching-architecture.md)
 - [AI provider strategy and fail-open moderation](docs/adr/0004-ai-provider-strategy.md)
+- [WebSocket connection resilience](docs/adr/0005-websocket-connection-resilience.md)
 - [Backend build plan](docs/backend-build-plan.md)
 
 ## Testing & Debugging
