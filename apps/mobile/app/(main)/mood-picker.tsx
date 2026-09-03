@@ -111,7 +111,12 @@ export default function MoodPicker() {
         style={styles.container}
         contentContainerStyle={styles.content}
       >
-        <Text style={styles.eyebrow}>unsaid</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.eyebrow}>unsaid</Text>
+          <Pressable onPress={() => router.push("/profile")} hitSlop={8}>
+            <Text style={styles.profileLink}>you</Text>
+          </Pressable>
+        </View>
         <Text style={styles.title}>what's sitting with you tonight?</Text>
         <Text style={styles.subtitle}>
           someone else is probably feeling it too.
@@ -199,13 +204,23 @@ const styles = StyleSheet.create({
     paddingTop: spacing.xl,
     paddingBottom: spacing.xl,
   },
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    marginBottom: spacing.sm,
+  },
   eyebrow: {
     fontFamily: fontFamily.medium,
     fontSize: 12,
     letterSpacing: 2,
     color: colors.horizon,
     textTransform: "uppercase",
-    marginBottom: spacing.sm,
+  },
+  profileLink: {
+    fontFamily: fontFamily.medium,
+    fontSize: 13,
+    color: colors.tide,
   },
   title: {
     fontFamily: fontFamily.logo,
