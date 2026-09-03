@@ -10,7 +10,7 @@
 
 **Unsaid** is a pseudonymous mood-matching social platform that connects people through authentic conversations. Phone-verified accounts ensure accountability, while chosen usernames keep early interactions comfortably private.
 
-**Status:** ✅ Active development — the core flow is live: phone OTP auth, mood-based matching, real-time chat, and typing indicators are all in place across the mobile app and backend.
+**Status:** ✅ Active development — the core flow is live: phone OTP auth, mood-based matching, real-time chat, typing indicators, icebreakers, moderation (report/block), and connection heartbeat are all in place across the mobile app and backend.
 
 ---
 
@@ -43,12 +43,12 @@
 - **Phone OTP Verification** — Twilio integration with a console stub mode for local development
 - **JWT Token System** — Access and refresh tokens with rotation and revocation
 - **Session Management** — Login, refresh, logout, and session expiry handling
-- **User Profiles** — Username, avatar URL, and bio support after onboarding
+- **User Profiles** — Username, avatar URL, and bio support after onboarding, editable from the mobile app's profile screen
 
 #### Real-Time Matching
 - **Mood-based Queue** — Exact mood FIFO matching via Valkey
 - **Interest Tagging** — User interests are captured for the matching flow
-- **Socket Registry** — Active socket tracking by user ID
+- **Socket Registry** — Active socket tracking by user ID, registered on every authenticated connection (not just queue joins), so matched or already-chatting users stay reachable across reconnects and server restarts
 - **Queue Management** — Join/leave queue and disconnect cleanup
 - **Block/Ban System** — Matching excludes blocked and banned users
 
@@ -57,29 +57,33 @@
 - **Message Persistence** — Messages and timestamps are stored reliably
 - **Real-time Messaging** — Send/receive through WebSocket events with validation
 - **Typing Indicators** — Real-time typing and stop-typing broadcasts between participants
-- **Activity & Silence Flow** — Basic activity state and conversation recovery hooks are integrated
-- **Report & Block Actions** — Users can report or block the active partner from chat
-- **Icebreaker Generation** — Conversation starter events can surface when the conversation stalls
+- **Activity & Silence Flow** — Activity tracking resets the icebreaker timer whenever either participant sends a message
+- **Report & Block Actions** — Users can report or block the active partner from chat; blocking ends the room and notifies the other participant
+- **Icebreaker Generation** — AI-generated conversation starters fire after a configurable silence window, avoid repeating the previous suggestion in the same room, and fall back to a static prompt if the AI call fails or times out
+- **Connection Heartbeat** — Client sends a periodic `PING`, server replies `PONG`, keeping WebSocket connections alive on networks (e.g. mobile hotspots) that kill idle sockets
 
 #### Mobile Chat Interface
 - **Matched Chat Screen** — Full message history and conversation state in the mobile app
-- **Self/Partner/System Bubbles** — Message rendering matches the active participant and system events
+- **Self/Partner/System Bubbles** — Message rendering matches the active participant and system events, with distinct card styling for icebreakers and support-resource messages
 - **Typing UI** — Partner typing state is surfaced visually while they are active
 - **Input and Send Flow** — Text input, send action, and typing debounce behavior are wired
 - **Room Actions** — Leave, block, and report actions are connected to socket events
 - **Session Handling** — Revoked sessions and partner departures are handled gracefully
+- **Profile Screen** — Edit username, avatar URL, and bio; changes reflect app-wide immediately via AuthContext
 
 #### Moderation & Safety
 - **AI Content Screening** — OpenAI-compatible moderation pipeline with fail-open behavior
-- **Report System** — Report events are supported in the chat flow
+- **Report System** — Report events are supported in the chat flow and persisted for review
 - **Block Enforcement** — Matching and room state respect the current block graph
 - **Bans** — Global ban checks are enforced during login and queue entry
 - **Safety Fallbacks** — The app keeps the conversation alive if moderation fails instead of blocking the user
+- **Support Resource Messaging** — Self-harm-flagged messages trigger a `SUPPORT_RESOURCE` event with an actual supportive message shown to both participants
 
 ### 🛠️ In Progress
 
 - **Moderation admin workflow** — More advanced report review and moderation tooling
-- **Expanded chat cleanup and edge-case recovery** — Room close, reconnect, and state reconciliation polishing
+- **Expanded chat cleanup and edge-case recovery** — Room close, reconnect, and message resync polishing
+- **Shared WebSocket connection** — Currently each screen (mood picker, chat room) opens its own connection independently; a shared app-wide connection via context is planned to reduce connection churn during navigation
 
 ### 📅 Planned
 
@@ -99,8 +103,9 @@ unsaid/
 │   ├── mobile/                    # React Native / Expo app (in development)
 │   │   ├── app/
 │   │   │   ├── (auth)/            # Authentication screens (phone-login, otp-verify)
-│   │   │   ├── (main)/            # Main app screens (mood-picker, chat)
+│   │   │   ├── (main)/            # Main app screens (mood-picker, chat, profile)
 │   │   │   │   ├── mood-picker.tsx       # Mood selection & matching interface
+│   │   │   │   ├── profile.tsx           # Edit username/avatar/bio, logout
 │   │   │   │   └── chat/[roomId].tsx     # Chat room with messaging & moderation
 │   │   │   ├── _layout.tsx        # Root layout
 │   │   │   └── fonts.ts           # Font configuration
@@ -110,7 +115,7 @@ unsaid/
 │   │   │   ├── api.ts             # HTTP client with token management
 │   │   │   ├── auth-context.tsx   # Auth state management
 │   │   │   ├── auth-storage.ts    # Secure token storage
-│   │   │   ├── ws-client.ts       # WebSocket connection helpers
+│   │   │   ├── ws-client.ts       # WebSocket connection helpers (incl. heartbeat)
 │   │   │   └── theme.ts           # Design tokens (colors, typography, spacing)
 │   │   ├── assets/
 │   │   ├── app.json               # Expo configuration
@@ -129,10 +134,10 @@ unsaid/
 │       │   └── modules/           # Feature domains
 │       │       ├── auth/          # OTP, JWT, session management
 │       │       ├── users/         # Profile endpoints
-│       │       ├── matching/      # Queue logic, pairing algorithm
-│       │       ├── chat/          # Messages, rooms, persistence
+│       │       ├── matching/      # Queue logic, pairing algorithm, socket registry
+│       │       ├── chat/          # Messages, rooms, persistence, icebreaker timer
 │       │       ├── moderation/    # Report, block, ban workflows
-│       │       ├── ai/            # AI content screening
+│       │       ├── ai/            # AI content screening & icebreaker generation
 │       │       └── upload/        # File handling (planned)
 │       │
 │       ├── drizzle/               # SQL migrations & snapshots
@@ -156,7 +161,7 @@ unsaid/
 
 | Layer | Technology | Purpose |
 | --- | --- | --- |
-| **Frontend** | React Native, Expo SDK 57 | Mobile app (scaffolded) |
+| **Frontend** | React Native, Expo SDK 57 | Mobile app |
 | **Backend Runtime** | Node.js 20+, Express 5 | HTTP server & REST API |
 | **Language** | TypeScript (strict mode) | Type-safe backend code |
 | **Real-time** | WebSocket (`ws` library) | Bidirectional chat & matching |
@@ -165,7 +170,7 @@ unsaid/
 | **Cache/Queue** | Valkey 8 (Redis-compatible) | Mood queues, session/ban denylists, transient state |
 | **Input Validation** | Zod + BaseDto wrapper | Schema-based DTO validation |
 | **Authentication** | Twilio + JWT | Phone OTP → access/refresh tokens |
-| **AI/Moderation** | OpenAI-compatible API | Content screening (NVIDIA NIM default) |
+| **AI/Moderation** | OpenAI-compatible API | Content screening & icebreaker generation (NVIDIA NIM default) |
 | **Error Handling** | Centralized ApiError | Consistent error codes & HTTP responses |
 | **Dev Tooling** | Docker Compose, npm workspaces | Local Postgres/Valkey stack |
 
@@ -226,7 +231,7 @@ AI_BASE_URL=https://integrate.api.nvidia.com/v1
 
 Keep `OTP_STUB_MODE=true` during local development. The OTP is logged instead of sent by SMS. To send real OTPs, set it to `false` and provide the Twilio variables in `apps/server/.env`. Never commit `.env` or real API keys.
 
-`NVIDIA_API_KEY`, `MODERATION_MODEL`, and `AI_BASE_URL` are read by the server configuration layer (`common/config`) and are required for the moderation module to function — the client defaults to NVIDIA's NIM catalog, which offers free access to a range of open models, chosen specifically to avoid a billing dependency during development. See [ADR-0004](docs/adr/0004-ai-provider-strategy.md) for the reasoning, including the fail-open policy if the AI call fails.
+`NVIDIA_API_KEY`, `MODERATION_MODEL`, and `AI_BASE_URL` are read by the server configuration layer (`common/config`) and are required for the moderation and icebreaker modules to function — the client defaults to NVIDIA's NIM catalog, which offers free access to a range of open models, chosen specifically to avoid a billing dependency during development. See [ADR-0004](docs/adr/0004-ai-provider-strategy.md) for the reasoning, including the fail-open policy if the AI call fails.
 
 ### 4. Apply database migrations
 
@@ -264,11 +269,14 @@ npm start
 
 Use Expo Go, an Android emulator, an iOS simulator, or the web target.
 
+If testing across two devices on the same network (e.g. an emulator plus a physical phone), point `EXPO_PUBLIC_BASE_URL` and `EXPO_PUBLIC_WS_URL` in `apps/mobile/.env` at your machine's actual LAN IP rather than `10.0.2.2` (which only resolves from an Android emulator, not a real device), and make sure your firewall allows inbound connections on the backend's port.
+
 The mobile app flow:
 1. Phone login screen — Request OTP
 2. OTP verification — Verify and create session
 3. Mood picker — Select mood and interests, join matching queue
 4. Chat interface — Send/receive messages with matched partner, report/block functionality
+5. Profile — Edit username, avatar, and bio; log out
 
 ## API Reference
 
@@ -416,6 +424,8 @@ Request body (all fields optional):
 }
 ```
 
+`avatarUrl` is validated as a URL when present — omit the field entirely rather than sending an empty string, since an empty string fails URL validation.
+
 Response (200): Updated user object (same shape as `GET /api/users/me`).
 
 ---
@@ -435,7 +445,7 @@ Response (200):
 
 ## WebSocket API
 
-The WebSocket server authenticates during the upgrade handshake using the access token. Missing or invalid tokens are rejected before the connection opens.
+The WebSocket server authenticates during the upgrade handshake using the access token. Missing or invalid tokens are rejected before the connection opens. Every authenticated connection is registered in the socket registry immediately (not only when joining the queue), so any connected user — queuing, matched, or mid-conversation — stays reachable across reconnects.
 
 ### Connection
 
@@ -525,7 +535,7 @@ Send a message to the current chat room. The message is:
 3. Persisted to the database with a timestamp
 4. Broadcast to the partner (if connected)
 
-**Status**: Service layer implemented; gateway wiring in progress.
+**Status**: Implemented and live.
 
 ---
 
@@ -534,19 +544,22 @@ Send a message to the current chat room. The message is:
 ```json
 {
   "type": "MESSAGE",
-  "roomId": "uuid",
-  "senderId": "uuid",
-  "content": "Hello!",
-  "messageType": "text",
-  "imageUrl": null,
-  "timestamp": "2026-01-01T12:34:56Z",
-  "flaggedAt": null
+  "message": {
+    "id": "uuid",
+    "roomId": "uuid",
+    "senderId": "uuid",
+    "content": "Hello!",
+    "messageType": "text",
+    "imageUrl": null,
+    "sentAt": "2026-01-01T12:34:56Z",
+    "flaggedAt": null
+  }
 }
 ```
 
-Received when the partner sends a message. `flaggedAt` is set if AI moderation flagged the content as policy-violating.
+Received when the partner sends a message. Note that the message fields are nested under `message`, not flat on the event. `flaggedAt` is set if AI moderation flagged the content as policy-violating.
 
-**Status**: Service layer implemented; gateway wiring pending.
+**Status**: Implemented and live.
 
 ---
 
@@ -555,13 +568,13 @@ Received when the partner sends a message. `flaggedAt` is set if AI moderation f
 ```json
 {
   "type": "SUPPORT_RESOURCE",
-  "message": "If you're struggling, here are some resources: ..."
+  "content": "If you're struggling, here are some resources: ..."
 }
 ```
 
-Sent when moderation flags a message as related to self-harm or crisis. Surfaced to both users for safety.
+Sent to both users when a message is flagged with moderation category `self_harm`. Note the field is `content`, not `message`.
 
-**Status**: Planned.
+**Status**: Implemented.
 
 ---
 
@@ -580,7 +593,7 @@ Sent when moderation flags a message as related to self-harm or crisis. Surfaced
 
 Report a specific message from the partner. Creates a persistent report record in the database for admin review.
 
-**Status**: Planned.
+**Status**: Implemented. Creates a persistent report record via `createReport`.
 
 ---
 
@@ -594,7 +607,7 @@ Report a specific message from the partner. Creates a persistent report record i
 
 Acknowledgment that the report was logged.
 
-**Status**: Planned.
+**Status**: Implemented. Sent immediately after a report is logged.
 
 ---
 
@@ -609,7 +622,7 @@ Acknowledgment that the report was logged.
 
 Block the current partner. The user will not be matched with this person again. The room is closed for both participants.
 
-**Status**: Planned. (Service layer `createBlock` is implemented.)
+**Status**: Implemented. Calls `createBlock`, ends the room, and notifies the partner via `PARTNER_LEFT`.
 
 ---
 
@@ -623,7 +636,7 @@ Block the current partner. The user will not be matched with this person again. 
 
 Sent when the partner leaves the room, blocks you, or is disconnected.
 
-**Status**: Planned.
+**Status**: Implemented. Sent to the remaining participant when their partner blocks them or leaves the room.
 
 ---
 
@@ -682,9 +695,33 @@ Indicates the partner is actively typing.
 }
 ```
 
-Sent when the system detects a conversation silence (configurable timer, default 30 seconds). Provides an AI-generated conversation starter to help re-engage users.
+Sent when the system detects a conversation silence (configurable timer, default 30 seconds, checked every 10 seconds). Provides an AI-generated conversation starter to help re-engage users. The last suggestion sent in a room is tracked and passed back into the prompt so the model avoids repeating or closely rephrasing it. Falls back to a static prompt ("What's been on your mind today?") if the AI call fails or times out.
 
-**Status**: Service layer implemented; timer integration pending.
+**Status**: Implemented.
+
+---
+
+### Connection Heartbeat
+
+#### Client: Ping
+
+```json
+{ "type": "PING" }
+```
+
+Sent by the client every 15 seconds while connected.
+
+---
+
+#### Server: Pong
+
+```json
+{ "type": "PONG" }
+```
+
+Acknowledgment reply. Purely keeps the connection active on networks that close idle sockets (observed on mobile hotspots); carries no other meaning and is discarded by the client on receipt.
+
+**Status**: Implemented.
 
 ---
 
@@ -809,6 +846,14 @@ Valkey stores ephemeral state that does not require durability:
 
 Key builders in [common/redis/keys.ts](apps/server/src/common/redis/keys.ts) ensure consistent key formatting.
 
+### In-Memory State (server process)
+
+Some transient state lives only in the running server process (not Valkey or Postgres), and is lost on restart:
+
+- **Socket registry** — `Map<userId, WebSocket>` tracking every connected user, keyed by user ID. Populated on every authenticated connection, cleared on disconnect.
+- **Icebreaker silence tracking** — `Map<roomId, timestamp>` and `Map<roomId, boolean>` tracking last activity and whether an icebreaker has already fired for the current silence period.
+- **Icebreaker history** — `Map<roomId, string>` tracking the last icebreaker suggestion sent per room, used to avoid repeats.
+
 ### Migrations
 
 All schema changes are managed with Drizzle Kit. Migrations live in [apps/server/drizzle/](apps/server/drizzle/) and are applied with:
@@ -851,14 +896,23 @@ If the moderation call fails for **any reason** — network timeout, provider ou
 
 This is an intentional trade-off: avoiding the error of blocking valid communication takes priority over the error of missing one harmful message. See [ADR-0004](docs/adr/0004-ai-provider-strategy.md) for the full reasoning.
 
+### Icebreaker Generation
+
+**Service layer** ([modules/ai/icebreaker.ts](apps/server/src/modules/ai/icebreaker.ts)):
+- Calls the same OpenAI-compatible endpoint as moderation, at a higher temperature (1.0) for variety
+- Prompts for a single casual conversation starter based on the shared mood
+- Tracks the most recently sent suggestion per room and instructs the model not to repeat or closely rephrase it
+- Falls back to a static prompt ("What's been on your mind today?") if the call fails or returns no content
+
 ### Configuration
 
-Moderation is configured via environment variables:
+Moderation and icebreaker generation are configured via environment variables:
 
 ```dotenv
 AI_BASE_URL=https://integrate.api.nvidia.com/v1
 NVIDIA_API_KEY=your-api-key
 MODERATION_MODEL=meta/muse-glimmer-30b
+ICEBREAKER_MODEL=meta/muse-glimmer-30b
 ```
 
 The client in [common/ai/client.ts](apps/server/src/common/ai/client.ts) is swappable; you can point to any OpenAI-compatible endpoint (e.g., Mistral, Ollama, OpenAI's own API). **NVIDIA NIM is the default** during development because it offers free access to a curated set of open models, removing the need for a billing dependency.
@@ -926,6 +980,8 @@ Contact your AI provider's documentation for the full set of categories supporte
 - No audit logging (planned for a future admin dashboard)
 - Message history export not yet implemented
 - No end-to-end encryption (messages are in plaintext in the database)
+- Each screen (mood picker, chat room) opens its own WebSocket connection independently rather than sharing one app-wide connection; this can cause brief connection churn during navigation or Fast Refresh in development, and is a candidate for a shared-context refactor
+- No message resync after a genuine reconnect — messages sent while a client was disconnected are not automatically backfilled on reconnect
 
 ## Development Commands
 
@@ -975,11 +1031,20 @@ Then send events as JSON:
 { "type": "JOIN_QUEUE", "mood": "anxious", "interests": ["music"] }
 ```
 
+### Testing Matching & Chat With Two Users
+
+Since matching requires two connected clients, a few practical options for local testing:
+
+- **Two Android emulators**, or one emulator plus a physical device on the same network — set `EXPO_PUBLIC_BASE_URL`/`EXPO_PUBLIC_WS_URL` to your machine's LAN IP (not `10.0.2.2`, which is emulator-only) so a physical device can reach the backend
+- **A lightweight `ws` script** acting as a fake second user — connects with a real access token, sends `JOIN_QUEUE`, and logs incoming events, without needing a second UI
+- Two `wscat` sessions authenticated as different users
+
 ### Debugging
 
 - **Database queries**: Open Drizzle Studio with `npm run db:studio` to inspect tables in real time
 - **Redis state**: Use `redis-cli` to inspect Valkey queues and ban denylist
 - **Server logs**: Run `npm run dev` to see console logs (includes OTP codes in stub mode)
+- **Socket registry state**: Since it's in-memory, restarting the server clears it — any client that doesn't reconnect afterward will appear unreachable until it does
 
 ## Troubleshooting
 
@@ -992,6 +1057,10 @@ Then send events as JSON:
 | **WebSocket connection rejected** | Verify the access token is valid and included in the query string: `ws://localhost:8000/ws?accessToken=<TOKEN>` |
 | **AI moderation fails silently** | Check `NVIDIA_API_KEY` and `AI_BASE_URL`. The system is designed to fail open — messages are sent regardless, with a logged error |
 | **Port 8000 already in use** | Change `PORT` env var or kill the process: `lsof -i :8000` (macOS/Linux) or `netstat -ano` (Windows) |
+| **Physical device can't reach the backend, but the emulator can** | `10.0.2.2` only resolves from an Android emulator. Point `EXPO_PUBLIC_BASE_URL`/`EXPO_PUBLIC_WS_URL` at your machine's actual LAN IP instead, and confirm your OS firewall allows inbound connections on the backend's port |
+| **`PATCH /api/users/me` returns "Invalid URL"** | `avatarUrl` is validated as a URL when present. Omit the field entirely if it's empty rather than sending `""` |
+| **Messages/icebreakers render as empty bubbles on the client** | Check the client is reading the correct field: `MESSAGE` events nest content under `message.content`, and `ICEBREAKER` events use `suggestion`, not `content` |
+| **WebSocket disconnects repeatedly on an idle connection** | Some networks (mobile hotspots especially) close idle sockets. Confirm the heartbeat (`PING`/`PONG` every 15s) is running on the client |
 
 ## Development Conventions
 
@@ -1015,6 +1084,7 @@ Then send events as JSON:
 - **Gateways** — Event handlers in `src/modules/<feature>/<feature>.gateway.ts` that parse, validate, and route incoming WebSocket events
 - **Message types** — Define client and server event types as constants or enums
 - **Error responses** — Send structured `{ type: "ERROR", message: "..." }` events on validation failures
+- **Socket registration** — Register new authenticated sockets in the shared registry as soon as the connection is established, not only in response to a specific event, so any connected user stays reachable regardless of what they're currently doing
 
 ### Database
 
@@ -1027,6 +1097,13 @@ Then send events as JSON:
 - Use `console.log()`, `console.error()`, and `console.warn()` for now
 - Structured logging (JSON-formatted logs with levels and context) is a planned enhancement
 - Sensitive data (API keys, full phone numbers, full JWTs) must never be logged
+- Remove temporary debug logs (e.g. `console.log("DEBUG ...")`) once an issue is confirmed fixed, rather than leaving them in permanently
+
+### Mobile Conventions
+
+- **Design tokens** — Use `colors`, `typography`, `spacing`, `radii`, and `fontFamily` from [lib/theme.ts](apps/mobile/lib/theme.ts) rather than hardcoded values
+- **Voice** — Copy is lowercase and intimate where it's user-facing emotional content (screen headlines, empty states), matching the app's tone; standard UI chrome (buttons, labels) can stay more conventional
+- **WebSocket payload shapes** — Always check the actual server-side `.send()` call for an event's exact field names before wiring a client handler; several past bugs came from assuming a flat shape when the payload was nested, or guessing a field name that didn't match
 
 ### Testing
 
@@ -1048,8 +1125,8 @@ Then send events as JSON:
 ### Adding a new WebSocket event
 
 1. Define the event type and payload in `src/modules/<feature>/<feature>.gateway.ts`
-2. Emit from the server using `socket.emit('<EVENT_NAME>', payload)`
-3. Update the [WebSocket Events](#-websocket-events) section of this README
+2. Register it with `registerMessageHandler("EVENT_NAME", handler)`
+3. Update the [WebSocket API](#websocket-api) section of this README, including a concrete payload example matching exactly what the handler sends
 
 ### Running a database migration
 
@@ -1079,15 +1156,18 @@ npx tsc --noEmit
 - [x] Add room-level actions such as leave, block, and report from the chat screen
 - [x] Surface partner state updates such as typing, left-room, and session revocations in the app UI
 - [x] Add conversation starter and support-resource event handling in the chat flow
+- [x] Fix icebreaker and message payload mismatches between client and server
+- [x] Prevent icebreakers from repeating the same suggestion within a room
 - [ ] Add support for message image uploads and URLs
-- [ ] Polish reconnect and message resync behavior for dropped or stale connections
+- [x] Add a connection heartbeat (PING/PONG) to prevent idle disconnects on unstable networks
+- [ ] Add message resync after a genuine reconnect (fetch messages sent while disconnected)
 
 ### Phase 3: Moderation & Safety (In Progress)
 
 - [x] Wire `REPORT` event to the chat flow
 - [x] Wire `BLOCK` event and enforce partner-level restrictions
 - [ ] Implement stricter message-level ban enforcement during live sessions
-- [ ] Add more structured `SUPPORT_RESOURCE` handling and user guidance
+- [x] Add `SUPPORT_RESOURCE` handling with an actual supportive message
 - [ ] Build admin reporting dashboard (future)
 
 ### Phase 4: Mobile App (Live)
@@ -1099,11 +1179,14 @@ npx tsc --noEmit
 - [x] Matching queue and room transition flow
 - [x] Chat interface screen with live message updates and typing state
 - [x] Typing indicator implementation in the mobile chat UI
+- [x] Profile screen for editing username, avatar, and bio
+- [x] Redesign mood picker and chat screens to match the app's visual and voice identity
 - [ ] Add push notifications (optional)
 - [ ] Implement avatar upload from device
 
 ### Phase 5: Scaling & Polish (Planned)
 
+- [ ] Refactor to a single shared WebSocket connection (context/provider) instead of per-screen connections
 - [ ] Add automated test suite (Jest for backend, Detox for mobile)
 - [ ] Implement rate limiting on auth endpoints
 - [ ] Add structured logging (JSON format, log levels)
@@ -1116,7 +1199,6 @@ npx tsc --noEmit
 - [ ] Advanced matching beyond exact-mood FIFO (compatibility scores, time zones, topics)
 - [ ] Chat history export and search
 - [ ] User analytics dashboard
-- [ ] AI-powered icebreaker and conversation improvement suggestions
 - [ ] Read receipts and delivery status
 - [ ] End-to-end encryption (E2EE) for messages
 - [ ] Web app companion (browser-based chat)
