@@ -28,16 +28,24 @@ export default function Profile() {
     setError(null);
     setIsSaving(true);
     try {
+      const payload: { username: string; bio: string; avatarUrl?: string } = {
+        username,
+        bio,
+      };
+      if (avatarUrl.trim()) {
+        payload.avatarUrl = avatarUrl.trim();
+      }
+
       const response = await apiFetch("/api/users/me", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, avatarUrl, bio }),
+        body: JSON.stringify(payload),
       });
       if (!response.ok) throw new Error("Save failed");
       const { data } = await response.json();
       // Reflect the change everywhere in the app immediately, not just
       // on this screen — AuthContext is what other screens read from.
-      setUser(data);
+      setUser?.(data);
     } catch {
       setError("Couldn't save that — try again");
     } finally {
