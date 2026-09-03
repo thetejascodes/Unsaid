@@ -11,7 +11,7 @@ import { useRouter } from "expo-router";
 import { connectSocket, sendEvent } from "../../lib/ws-client";
 import { useAuth } from "../../lib/auth-context";
 import { getAccessToken } from "../../lib/api";
-import { colors, typography, spacing, radii } from "../../lib/theme";
+import { colors, typography, spacing, radii, fontFamily } from "../../lib/theme";
 import { DuskBackground } from "../../components/DuskBackground";
 
 type Status = "idle" | "queued" | "matched";
@@ -51,7 +51,6 @@ export default function MoodPicker() {
   }, []);
 
   const handleSocketMessage = async (event: any) => {
-      console.log("MOOD PICKER RECEIVED:", event.type, event);
     switch (event.type) {
       case "QUEUED":
         setStatus("queued");
@@ -76,7 +75,7 @@ export default function MoodPicker() {
         router.replace("/phone-login");
         break;
       case "ERROR":
-        Alert.alert("Error", event.message || "An error occurred");
+        Alert.alert("Something went wrong", event.message || "Please try again.");
         break;
       default:
         break;
@@ -84,20 +83,19 @@ export default function MoodPicker() {
   };
 
   const handleJoinQueue = () => {
-  console.log("JOIN QUEUE TAPPED. ws exists:", !!ws, "readyState:", ws?.readyState);
-  if (!selectedMood) {
-    Alert.alert("Please select a mood");
-    return;
-  }
-  if (ws && ws.readyState === WebSocket.OPEN) {
-    sendEvent(ws, "JOIN_QUEUE", {
-      mood: selectedMood,
-      interests: selectedInterests,
-    });
-  } else {
-    Alert.alert("Connection Error", "WebSocket is not connected");
-  }
-};
+    if (!selectedMood) {
+      Alert.alert("Pick how you're feeling first");
+      return;
+    }
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      sendEvent(ws, "JOIN_QUEUE", {
+        mood: selectedMood,
+        interests: selectedInterests,
+      });
+    } else {
+      Alert.alert("Not connected", "Reconnecting — try again in a moment.");
+    }
+  };
 
   const toggleInterest = (interest: string) => {
     setSelectedInterests((prev) =>
@@ -113,10 +111,13 @@ export default function MoodPicker() {
         style={styles.container}
         contentContainerStyle={styles.content}
       >
-        <Text style={styles.title}>How are you feeling?</Text>
+        <Text style={styles.eyebrow}>unsaid</Text>
+        <Text style={styles.title}>what's sitting with you tonight?</Text>
+        <Text style={styles.subtitle}>
+          someone else is probably feeling it too.
+        </Text>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Select Your Mood</Text>
           <View style={styles.moodGrid}>
             {MOODS.map((mood) => (
               <Pressable
@@ -127,13 +128,14 @@ export default function MoodPicker() {
                 ]}
                 onPress={() => setSelectedMood(mood.value)}
               >
+                <Text style={styles.moodEmoji}>{mood.emoji}</Text>
                 <Text
                   style={[
                     styles.moodButtonText,
                     selectedMood === mood.value && styles.moodButtonTextActive,
                   ]}
                 >
-                  {mood.emoji} {mood.label}
+                  {mood.label}
                 </Text>
               </Pressable>
             ))}
@@ -141,7 +143,7 @@ export default function MoodPicker() {
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Interests (Optional)</Text>
+          <Text style={styles.sectionTitle}>anything you'd want to talk about (optional)</Text>
           <View style={styles.interestsGrid}>
             {INTERESTS.map((interest) => (
               <Pressable
@@ -167,12 +169,10 @@ export default function MoodPicker() {
           </View>
         </View>
 
-        {/* Status Text */}
         {status === "queued" && (
-          <Text style={styles.statusText}>Waiting for a match...</Text>
+          <Text style={styles.statusText}>looking for someone who understands...</Text>
         )}
 
-        {/* Find Match Button */}
         <Pressable
           style={[
             styles.findButton,
@@ -182,7 +182,7 @@ export default function MoodPicker() {
           disabled={status === "queued"}
         >
           <Text style={styles.findButtonText}>
-            {status === "queued" ? "Searching..." : "Find a Match"}
+            {status === "queued" ? "searching..." : "find someone"}
           </Text>
         </Pressable>
       </ScrollView>
@@ -196,48 +196,70 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: spacing.lg,
-    paddingVertical: spacing.xl,
+    paddingTop: spacing.xl,
+    paddingBottom: spacing.xl,
+  },
+  eyebrow: {
+    fontFamily: fontFamily.medium,
+    fontSize: 12,
+    letterSpacing: 2,
+    color: colors.horizon,
+    textTransform: "uppercase",
+    marginBottom: spacing.sm,
   },
   title: {
-    ...typography.headline,
+    fontFamily: fontFamily.logo,
+    fontSize: 28,
+    lineHeight: 36,
+    color: colors.paper,
+    marginBottom: spacing.xs,
+  },
+  subtitle: {
+    fontFamily: fontFamily.regular,
+    fontSize: 14,
+    color: colors.fog,
     marginBottom: spacing.xl,
-    textAlign: "center",
   },
   section: {
     marginBottom: spacing.xl,
   },
   sectionTitle: {
-    ...typography.body,
+    fontFamily: fontFamily.medium,
+    fontSize: 14,
+    color: colors.fog,
     marginBottom: spacing.md,
-    fontWeight: "600",
   },
   moodGrid: {
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: spacing.md,
-    justifyContent: "center",
+    gap: spacing.sm,
   },
   moodButton: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: radii.lg,
-    borderWidth: 2,
-    borderColor: colors.fog,
-    backgroundColor: "transparent",
-    minWidth: 90,
+    flexDirection: "row",
     alignItems: "center",
+    gap: 6,
+    paddingHorizontal: spacing.md,
+    paddingVertical: 10,
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: "rgba(245, 237, 227, 0.15)",
+    backgroundColor: "rgba(245, 237, 227, 0.05)",
   },
   moodButtonActive: {
     borderColor: colors.horizon,
-    backgroundColor: colors.horizon,
+    backgroundColor: "rgba(240, 149, 78, 0.15)",
+  },
+  moodEmoji: {
+    fontSize: 15,
   },
   moodButtonText: {
-    ...typography.body,
+    fontFamily: fontFamily.regular,
+    fontSize: 14,
     color: colors.fog,
   },
   moodButtonTextActive: {
-    color: colors.duskDeep,
-    fontWeight: "600",
+    fontFamily: fontFamily.medium,
+    color: colors.horizon,
   },
   interestsGrid: {
     flexDirection: "row",
@@ -246,43 +268,46 @@ const styles = StyleSheet.create({
   },
   interestTag: {
     paddingHorizontal: spacing.md,
-    paddingVertical: spacing.xs,
+    paddingVertical: 8,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.tide,
+    borderColor: "rgba(110, 156, 147, 0.35)",
     backgroundColor: "transparent",
   },
   interestTagActive: {
     borderColor: colors.tide,
-    backgroundColor: colors.tide,
+    backgroundColor: "rgba(110, 156, 147, 0.18)",
   },
   interestTagText: {
-    ...typography.caption,
+    fontFamily: fontFamily.regular,
+    fontSize: 13,
     color: colors.tide,
   },
   interestTagTextActive: {
-    color: colors.duskDeep,
-    fontWeight: "600",
+    fontFamily: fontFamily.medium,
+    color: colors.paper,
   },
   statusText: {
-    ...typography.body,
+    fontFamily: fontFamily.regular,
+    fontStyle: "italic",
+    fontSize: 14,
     color: colors.horizon,
     textAlign: "center",
-    marginVertical: spacing.lg,
+    marginBottom: spacing.md,
   },
   findButton: {
     paddingVertical: spacing.md,
     borderRadius: radii.lg,
     backgroundColor: colors.horizon,
     alignItems: "center",
-    marginTop: spacing.xl,
+    marginTop: spacing.sm,
   },
   findButtonDisabled: {
-    opacity: 0.6,
+    opacity: 0.5,
   },
   findButtonText: {
-    ...typography.body,
+    fontFamily: fontFamily.semibold,
+    fontSize: 15,
     color: colors.duskDeep,
-    fontWeight: "700",
   },
 });
