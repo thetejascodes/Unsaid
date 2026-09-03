@@ -1,5 +1,5 @@
 import { getSocket } from "../matching/socket-registry.js";
-import { generateIcebreaker } from "../ai/icebreaker.js";
+import { generateIcebreaker, clearIcebreakerHistory } from "../ai/icebreaker.js";
 import { db } from "../../common/db/index.js";
 import { rooms } from "./chat.schema.js";
 import { eq } from "drizzle-orm";
@@ -18,6 +18,7 @@ export const recordActivity = (roomId: string) => {
 export const clearRoomTimer = (roomId: string) => {
   lastMessageAt.delete(roomId);
   icebreakerSent.delete(roomId);
+  clearIcebreakerHistory(roomId);
 };
 
 export const startIcebreakerTimer = () => {
@@ -36,7 +37,7 @@ export const startIcebreakerTimer = () => {
 
       icebreakerSent.set(roomId, true);
 
-      const suggestion = await generateIcebreaker({ mood: room.mood });
+      const suggestion = await generateIcebreaker({ mood: room.mood, roomId });
 
       for (const userId of [room.userAId, room.userBId]) {
         const socket = getSocket(userId);

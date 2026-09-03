@@ -1,7 +1,11 @@
 import { aiClient } from "../../common/ai/client.js";
 import config from "../../common/config/index.js";
 
-export const generateIcebreaker = async (context: { mood: string }) => {
+const lastIcebreakerByRoom = new Map<string, string>();
+
+export const generateIcebreaker = async (context: { mood: string; roomId: string }) => {
+  const previous = lastIcebreakerByRoom.get(context.roomId);
+
   try {
     const completion = await aiClient.chat.completions.create({
       model: config.ai.icebreakerModel,
@@ -12,10 +16,13 @@ export const generateIcebreaker = async (context: { mood: string }) => {
             "Two strangers just matched because they both feel " +
             context.mood +
             ". Give me ONE single casual conversation starter for them, as a single sentence. " +
-            "Do not give options, a list, numbering, or any preamble — output only the one sentence itself, nothing else.",
+            "Do not give options, a list, numbering, or any preamble — output only the one sentence itself, nothing else." +
+            (previous
+              ? ` Do not repeat or closely rephrase this previous suggestion: "${previous}"`
+              : ""),
         },
       ],
-      temperature: 0.9,
+      temperature: 1.0,
       max_tokens: 100,
       stream: false,
     });
@@ -28,9 +35,15 @@ export const generateIcebreaker = async (context: { mood: string }) => {
         ")",
       );
     }
-    return suggestion || "What's been on your mind today?";
+    const result = suggestion || "What's been on your mind today?";
+    lastIcebreakerByRoom.set(context.roomId, result);
+    return result;
   } catch (error) {
     console.error("Icebreaker generation failed:", error);
     return "What's been on your mind today?";
   }
+};
+
+export const clearIcebreakerHistory = (roomId: string) => {
+  lastIcebreakerByRoom.delete(roomId);
 };
