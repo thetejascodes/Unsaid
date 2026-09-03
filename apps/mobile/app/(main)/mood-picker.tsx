@@ -8,6 +8,7 @@ import {
   Alert,
 } from "react-native";
 import { useRouter } from "expo-router";
+import { Feather } from "@expo/vector-icons";
 import { connectSocket, sendEvent } from "../../lib/ws-client";
 import { useAuth } from "../../lib/auth-context";
 import { getAccessToken } from "../../lib/api";
@@ -113,8 +114,8 @@ export default function MoodPicker() {
       >
         <View style={styles.headerRow}>
           <Text style={styles.eyebrow}>unsaid</Text>
-          <Pressable onPress={() => router.push("/profile")} hitSlop={8}>
-            <Text style={styles.profileLink}>you</Text>
+          <Pressable onPress={() => router.push("/profile")} hitSlop={8} style={styles.profileButton}>
+            <Feather name="user" size={16} color={colors.tide} />
           </Pressable>
         </View>
         <Text style={styles.title}>what's sitting with you tonight?</Text>
@@ -217,10 +218,15 @@ const styles = StyleSheet.create({
     color: colors.horizon,
     textTransform: "uppercase",
   },
-  profileLink: {
-    fontFamily: fontFamily.medium,
-    fontSize: 13,
-    color: colors.tide,
+  profileButton: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 1,
+    borderColor: "rgba(110, 156, 147, 0.35)",
+    backgroundColor: "rgba(110, 156, 147, 0.1)",
+    alignItems: "center",
+    justifyContent: "center",
   },
   title: {
     fontFamily: fontFamily.logo,
