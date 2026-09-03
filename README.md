@@ -1215,7 +1215,6 @@ The project follows TypeScript strict mode and the development conventions outli
 
 ## License
 
-
 MIT © 2026 Unsaid
 
 *Built from a feeling that stayed too long.*
