@@ -7,6 +7,7 @@ import {
   TextInput,
   Alert,
   FlatList,
+  Animated,
 } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { connectSocket, sendEvent } from "../../../lib/ws-client";
@@ -20,6 +21,7 @@ import {
   fontFamily,
 } from "../../../lib/theme";
 import { DuskBackground } from "../../../components/DuskBackground";
+import { TypingDots } from "../../../components/TypingDots";
 
 interface Message {
   id: string;
@@ -31,6 +33,27 @@ interface Message {
 }
 
 type RoomStatus = "connected" | "partner_left" | "revoked";
+
+// Wraps a single rendered message in a fade + slide-up entrance.
+// Runs once on mount — new messages animate in as they're added
+// to the FlatList; existing ones on initial load don't replay.
+function AnimatedMessage({ children }: { children: React.ReactNode }) {
+  const opacity = useRef(new Animated.Value(0)).current;
+  const translateY = useRef(new Animated.Value(10)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(opacity, { toValue: 1, duration: 280, useNativeDriver: true }),
+      Animated.timing(translateY, { toValue: 0, duration: 280, useNativeDriver: true }),
+    ]).start();
+  }, [opacity, translateY]);
+
+  return (
+    <Animated.View style={{ opacity, transform: [{ translateY }] }}>
+      {children}
+    </Animated.View>
+  );
+}
 
 export default function ChatRoom() {
   const router = useRouter();
@@ -261,57 +284,63 @@ export default function ChatRoom() {
 
     if (isIcebreaker) {
       return (
-        <View style={styles.icebreakerRow}>
-          <View style={styles.icebreakerCard}>
-            <Text style={styles.icebreakerLabel}>a way in</Text>
-            <Text style={styles.icebreakerText}>{item.content}</Text>
+        <AnimatedMessage>
+          <View style={styles.icebreakerRow}>
+            <View style={styles.icebreakerCard}>
+              <Text style={styles.icebreakerLabel}>a way in</Text>
+              <Text style={styles.icebreakerText}>{item.content}</Text>
+            </View>
           </View>
-        </View>
+        </AnimatedMessage>
       );
     }
 
     if (isSupport) {
       return (
-        <View style={styles.icebreakerRow}>
-          <View style={styles.supportCard}>
-            <Text style={styles.supportText}>{item.content}</Text>
+        <AnimatedMessage>
+          <View style={styles.icebreakerRow}>
+            <View style={styles.supportCard}>
+              <Text style={styles.supportText}>{item.content}</Text>
+            </View>
           </View>
-        </View>
+        </AnimatedMessage>
       );
     }
 
     return (
-      <View
-        style={[
-          styles.messageContainer,
-          isOwn && styles.ownMessageContainer,
-          isSystem && styles.systemMessageContainer,
-        ]}
-      >
+      <AnimatedMessage>
         <View
           style={[
-            styles.messageBubble,
-            isOwn && styles.ownMessageBubble,
-            isSystem && styles.systemMessageBubble,
+            styles.messageContainer,
+            isOwn && styles.ownMessageContainer,
+            isSystem && styles.systemMessageContainer,
           ]}
         >
-          <Text
+          <View
             style={[
-              styles.messageText,
-              isOwn && styles.ownMessageText,
-              isSystem && styles.systemMessageText,
+              styles.messageBubble,
+              isOwn && styles.ownMessageBubble,
+              isSystem && styles.systemMessageBubble,
             ]}
           >
-            {item.content}
-          </Text>
-        </View>
+            <Text
+              style={[
+                styles.messageText,
+                isOwn && styles.ownMessageText,
+                isSystem && styles.systemMessageText,
+              ]}
+            >
+              {item.content}
+            </Text>
+          </View>
 
-        {isOwn && item.messageId && (
-          <Pressable onPress={() => handleReport(item.messageId!)} hitSlop={8}>
-            <Text style={styles.reportButton}>report</Text>
-          </Pressable>
-        )}
-      </View>
+          {isOwn && item.messageId && (
+            <Pressable onPress={() => handleReport(item.messageId!)} hitSlop={8}>
+              <Text style={styles.reportButton}>report</Text>
+            </Pressable>
+          )}
+        </View>
+      </AnimatedMessage>
     );
   };
 
@@ -354,7 +383,7 @@ export default function ChatRoom() {
 
         {partnerTyping && (
           <View style={styles.typingIndicator}>
-            <Text style={styles.typingText}>they're writing</Text>
+            <TypingDots />
           </View>
         )}
 
@@ -544,12 +573,6 @@ const styles = StyleSheet.create({
   typingIndicator: {
     paddingHorizontal: spacing.lg,
     paddingBottom: spacing.xs,
-  },
-  typingText: {
-    fontFamily: fontFamily.regular,
-    fontStyle: "italic",
-    color: colors.fog,
-    fontSize: 12,
   },
   inputContainer: {
     flexDirection: "row",
