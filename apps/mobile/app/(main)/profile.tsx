@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import {
   View,
   TextInput,
@@ -9,11 +9,13 @@ import {
   ActivityIndicator,
   ScrollView,
   Alert,
+  Animated,
 } from "react-native";
 import { apiFetch } from "../../lib/api";
 import { useAuth } from "../../lib/auth-context";
 import { colors, typography, radii, spacing, fontFamily } from "../../lib/theme";
 import { DuskBackground } from "../../components/DuskBackground";
+import { FadeInUp } from "../../components/FadeInUp";
 
 export default function Profile() {
   const { user, logout, setUser } = useAuth();
@@ -23,6 +25,16 @@ export default function Profile() {
   const [bio, setBio] = useState(user?.bio ?? "");
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Small pulse on the save button when a save actually lands,
+  // rather than only surfacing via the Alert.
+  const saveScale = useRef(new Animated.Value(1)).current;
+  const pulseSave = () => {
+    Animated.sequence([
+      Animated.timing(saveScale, { toValue: 1.05, duration: 120, useNativeDriver: true }),
+      Animated.spring(saveScale, { toValue: 1, useNativeDriver: true, friction: 4 }),
+    ]).start();
+  };
 
   const handleSave = async () => {
     setError(null);
@@ -46,6 +58,7 @@ export default function Profile() {
       // Reflect the change everywhere in the app immediately, not just
       // on this screen — AuthContext is what other screens read from.
       setUser(data);
+      pulseSave();
       Alert.alert("Saved", "That's you now.");
     } catch {
       setError("Couldn't save that — try again");
@@ -64,21 +77,23 @@ export default function Profile() {
           contentContainerStyle={{ flexGrow: 1, paddingHorizontal: spacing.lg }}
           keyboardShouldPersistTaps="handled"
         >
-          <Text
-            style={{
-              fontFamily: fontFamily.logo,
-              fontSize: 26,
-              color: colors.paper,
-              marginTop: spacing.xl * 1.4,
-            }}
-          >
-            how you show up
-          </Text>
-          <Text style={{ ...typography.caption, marginTop: spacing.sm, maxWidth: 280 }}>
-            just enough to feel like a person, not a stranger.
-          </Text>
+          <FadeInUp delay={0}>
+            <Text
+              style={{
+                fontFamily: fontFamily.logo,
+                fontSize: 26,
+                color: colors.paper,
+                marginTop: spacing.xl * 1.4,
+              }}
+            >
+              how you show up
+            </Text>
+            <Text style={{ ...typography.caption, marginTop: spacing.sm, maxWidth: 280 }}>
+              just enough to feel like a person, not a stranger.
+            </Text>
+          </FadeInUp>
 
-          <View style={{ marginTop: spacing.xl }}>
+          <FadeInUp delay={80} style={{ marginTop: spacing.xl }}>
             <Text style={{ ...typography.caption, marginBottom: spacing.xs }}>name</Text>
             <TextInput
               value={username}
@@ -97,9 +112,9 @@ export default function Profile() {
                 borderColor: "rgba(245,237,227,0.15)",
               }}
             />
-          </View>
+          </FadeInUp>
 
-          <View style={{ marginTop: spacing.lg }}>
+          <FadeInUp delay={160} style={{ marginTop: spacing.lg }}>
             <Text style={{ ...typography.caption, marginBottom: spacing.xs }}>avatar url</Text>
             <TextInput
               value={avatarUrl}
@@ -120,9 +135,9 @@ export default function Profile() {
                 borderColor: "rgba(245,237,227,0.15)",
               }}
             />
-          </View>
+          </FadeInUp>
 
-          <View style={{ marginTop: spacing.lg }}>
+          <FadeInUp delay={240} style={{ marginTop: spacing.lg }}>
             <Text style={{ ...typography.caption, marginBottom: spacing.xs }}>a few words about you</Text>
             <TextInput
               value={bio}
@@ -147,7 +162,7 @@ export default function Profile() {
                 textAlignVertical: "top",
               }}
             />
-          </View>
+          </FadeInUp>
 
           {error && (
             <Text style={{ ...typography.caption, color: colors.wine, marginTop: spacing.md }}>
@@ -155,30 +170,33 @@ export default function Profile() {
             </Text>
           )}
 
-          <TouchableOpacity
-            onPress={handleSave}
-            disabled={isSaving}
-            activeOpacity={0.85}
-            style={{
-              backgroundColor: colors.horizon,
-              opacity: isSaving ? 0.6 : 1,
-              paddingVertical: spacing.md,
-              borderRadius: radii.lg,
-              alignItems: "center",
-              flexDirection: "row",
-              justifyContent: "center",
-              gap: spacing.xs,
-              marginTop: spacing.xl,
-              shadowColor: colors.horizon,
-              shadowOpacity: isSaving ? 0 : 0.45,
-              shadowRadius: 16,
-              shadowOffset: { width: 0, height: 6 },
-              elevation: isSaving ? 0 : 6,
-            }}
-          >
-            {isSaving && <ActivityIndicator size="small" color={colors.duskDeep} />}
-            <Text style={typography.label}>{isSaving ? "Saving" : "Save"}</Text>
-          </TouchableOpacity>
+          <FadeInUp delay={320}>
+            <Animated.View style={{ transform: [{ scale: saveScale }], marginTop: spacing.xl }}>
+              <TouchableOpacity
+                onPress={handleSave}
+                disabled={isSaving}
+                activeOpacity={0.85}
+                style={{
+                  backgroundColor: colors.horizon,
+                  opacity: isSaving ? 0.6 : 1,
+                  paddingVertical: spacing.md,
+                  borderRadius: radii.lg,
+                  alignItems: "center",
+                  flexDirection: "row",
+                  justifyContent: "center",
+                  gap: spacing.xs,
+                  shadowColor: colors.horizon,
+                  shadowOpacity: isSaving ? 0 : 0.45,
+                  shadowRadius: 16,
+                  shadowOffset: { width: 0, height: 6 },
+                  elevation: isSaving ? 0 : 6,
+                }}
+              >
+                {isSaving && <ActivityIndicator size="small" color={colors.duskDeep} />}
+                <Text style={typography.label}>{isSaving ? "Saving" : "Save"}</Text>
+              </TouchableOpacity>
+            </Animated.View>
+          </FadeInUp>
 
           <TouchableOpacity
             onPress={() =>
