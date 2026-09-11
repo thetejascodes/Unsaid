@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   ScrollView,
   Pressable,
   Alert,
+  Animated,
 } from "react-native";
 import { useRouter } from "expo-router";
 import { Feather } from "@expo/vector-icons";
@@ -14,6 +15,7 @@ import { useAuth } from "../../lib/auth-context";
 import { getAccessToken } from "../../lib/api";
 import { colors, typography, spacing, radii, fontFamily } from "../../lib/theme";
 import { DuskBackground } from "../../components/DuskBackground";
+import { FadeInUp } from "../../components/FadeInUp";
 
 type Status = "idle" | "queued" | "matched";
 
@@ -29,6 +31,71 @@ const MOODS = [
 ];
 
 const INTERESTS = ["Music", "Art", "Sports", "Gaming", "Reading", "Cooking"];
+
+function MoodChip({
+  mood,
+  isSelected,
+  onPress,
+}: {
+  mood: (typeof MOODS)[number];
+  isSelected: boolean;
+  onPress: () => void;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const wasSelected = useRef(isSelected);
+
+  useEffect(() => {
+    if (isSelected && !wasSelected.current) {
+      Animated.sequence([
+        Animated.timing(scale, { toValue: 1.08, duration: 110, useNativeDriver: true }),
+        Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 4 }),
+      ]).start();
+    }
+    wasSelected.current = isSelected;
+  }, [isSelected, scale]);
+
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable
+        style={[styles.moodButton, isSelected && styles.moodButtonActive]}
+        onPress={onPress}
+      >
+        <Text style={styles.moodEmoji}>{mood.emoji}</Text>
+        <Text style={[styles.moodButtonText, isSelected && styles.moodButtonTextActive]}>
+          {mood.label}
+        </Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
+
+function InterestTag({
+  interest,
+  isOn,
+  onPress,
+}: {
+  interest: string;
+  isOn: boolean;
+  onPress: () => void;
+}) {
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const handlePress = () => {
+    Animated.sequence([
+      Animated.timing(scale, { toValue: 0.92, duration: 80, useNativeDriver: true }),
+      Animated.spring(scale, { toValue: 1, useNativeDriver: true, friction: 4 }),
+    ]).start();
+    onPress();
+  };
+
+  return (
+    <Animated.View style={{ transform: [{ scale }] }}>
+      <Pressable style={[styles.interestTag, isOn && styles.interestTagActive]} onPress={handlePress}>
+        <Text style={[styles.interestTagText, isOn && styles.interestTagTextActive]}>{interest}</Text>
+      </Pressable>
+    </Animated.View>
+  );
+}
 
 export default function MoodPicker() {
   const router = useRouter();
@@ -112,85 +179,64 @@ export default function MoodPicker() {
         style={styles.container}
         contentContainerStyle={styles.content}
       >
-        <View style={styles.headerRow}>
-          <Text style={styles.eyebrow}>unsaid</Text>
-          <Pressable onPress={() => router.push("/profile")} hitSlop={8} style={styles.profileButton}>
-            <Feather name="user" size={16} color={colors.tide} />
-          </Pressable>
-        </View>
-        <Text style={styles.title}>what's sitting with you tonight?</Text>
-        <Text style={styles.subtitle}>
-          someone else is probably feeling it too.
-        </Text>
+        <FadeInUp delay={0}>
+          <View style={styles.headerRow}>
+            <Text style={styles.eyebrow}>unsaid</Text>
+            <Pressable onPress={() => router.push("/profile")} hitSlop={8} style={styles.profileButton}>
+              <Feather name="user" size={16} color={colors.tide} />
+            </Pressable>
+          </View>
+          <Text style={styles.title}>what's sitting with you tonight?</Text>
+          <Text style={styles.subtitle}>
+            someone else is probably feeling it too.
+          </Text>
+        </FadeInUp>
 
-        <View style={styles.section}>
+        <FadeInUp delay={100} style={styles.section}>
           <View style={styles.moodGrid}>
             {MOODS.map((mood) => (
-              <Pressable
+              <MoodChip
                 key={mood.value}
-                style={[
-                  styles.moodButton,
-                  selectedMood === mood.value && styles.moodButtonActive,
-                ]}
+                mood={mood}
+                isSelected={selectedMood === mood.value}
                 onPress={() => setSelectedMood(mood.value)}
-              >
-                <Text style={styles.moodEmoji}>{mood.emoji}</Text>
-                <Text
-                  style={[
-                    styles.moodButtonText,
-                    selectedMood === mood.value && styles.moodButtonTextActive,
-                  ]}
-                >
-                  {mood.label}
-                </Text>
-              </Pressable>
+              />
             ))}
           </View>
-        </View>
+        </FadeInUp>
 
-        <View style={styles.section}>
+        <FadeInUp delay={200} style={styles.section}>
           <Text style={styles.sectionTitle}>anything you'd want to talk about (optional)</Text>
           <View style={styles.interestsGrid}>
             {INTERESTS.map((interest) => (
-              <Pressable
+              <InterestTag
                 key={interest}
-                style={[
-                  styles.interestTag,
-                  selectedInterests.includes(interest) &&
-                    styles.interestTagActive,
-                ]}
+                interest={interest}
+                isOn={selectedInterests.includes(interest)}
                 onPress={() => toggleInterest(interest)}
-              >
-                <Text
-                  style={[
-                    styles.interestTagText,
-                    selectedInterests.includes(interest) &&
-                      styles.interestTagTextActive,
-                  ]}
-                >
-                  {interest}
-                </Text>
-              </Pressable>
+              />
             ))}
           </View>
-        </View>
+        </FadeInUp>
 
         {status === "queued" && (
           <Text style={styles.statusText}>looking for someone who understands...</Text>
         )}
 
-        <Pressable
-          style={[
-            styles.findButton,
-            status === "queued" && styles.findButtonDisabled,
-          ]}
-          onPress={handleJoinQueue}
-          disabled={status === "queued"}
-        >
-          <Text style={styles.findButtonText}>
-            {status === "queued" ? "searching..." : "find someone"}
-          </Text>
-        </Pressable>
+        <FadeInUp delay={280}>
+          <Pressable
+            style={[
+              styles.findButton,
+              status === "queued" && styles.findButtonDisabled,
+            ]}
+            onPress={handleJoinQueue}
+            disabled={status === "queued"}
+          >
+            <Text style={styles.findButtonText}>
+              {status === "queued" ? "searching..." : "find someone"}
+            </Text>
+          </Pressable>
+        </FadeInUp>
       </ScrollView>
     </DuskBackground>
   );
